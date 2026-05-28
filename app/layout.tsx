@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+const loggedIn = false; // TODO: Replace with actual auth logic
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -27,7 +29,39 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-[color:var(--background)] text-[color:var(--foreground)]">
+        <header className="w-full bg-white/70 dark:bg-black/70 backdrop-blur-sm shadow-sm">
+          <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
+            <a href="/" className="text-lg font-semibold">ArtistMeet</a>
+            <nav className="text-sm text-gray-600 dark:text-gray-300">
+              {!loggedIn ? (
+                <>
+                  <a href="/login" className="px-3 hover:underline">
+                    Login
+                  </a>
+                  <a href="/register" className="px-3 hover:underline">
+                    Register
+                  </a>
+                </>
+              ) : (
+                <a href="/profile" className="px-3 hover:underline">
+                  Profile
+                </a>
+              )}
+            </nav>
+          </div>
+        </header>
+
+        <main className="flex-1">
+          <div className="mx-auto max-w-4xl px-4 py-10">{children}</div>
+        </main>
+
+        <footer className="w-full border-t border-gray-200 dark:border-gray-800">
+          <div className="mx-auto max-w-4xl px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            © {new Date().getFullYear()} ArtistMeet, All rights reserved.
+          </div>
+        </footer>
+      </body>
     </html>
   );
 }
