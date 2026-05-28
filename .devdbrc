@@ -1,0 +1,6 @@
+[
+  {
+    "type": "sqlite",
+    "path": "c:\\Projecten\\artistmeet\\prisma\\dev.db"
+  }
+]
