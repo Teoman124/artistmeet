@@ -1,5 +1,5 @@
-import { UserService } from '@/services/user.service'
-import { validateCreateUser } from '@/validators/user'
+import { UserService } from '@/src/services/user.service'
+import { validateCreateUser } from '@/src/validators/user'
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
@@ -43,12 +43,8 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Failed to create user:', error)
 
-    // Prisma unique constraint error
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        { error: `${error.meta?.target?.[0]} already exists` },
-        { status: 409 }
-      )
+    if (String(error?.message ?? '').includes('UNIQUE constraint failed')) {
+      return NextResponse.json({ error: 'Username or email already exists' }, { status: 409 })
     }
 
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })

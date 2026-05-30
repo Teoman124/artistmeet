@@ -1,5 +1,6 @@
 'use strict';
 const path = require('path');
+const crypto = require('crypto');
 const Database = require('better-sqlite3');
 
 const dbPath = path.join(__dirname, 'dev.db');
@@ -12,6 +13,12 @@ const profiles = [
     { username: 'bob', email: 'bob@example.com', password: 'password', role: 'user' },
     { username: 'carol', email: 'carol@example.com', password: 'password', role: 'user' }
 ];
+
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('base64url');
+    const derivedKey = crypto.scryptSync(password, salt, 64).toString('base64url');
+    return `scrypt$${salt}$${derivedKey}`;
+}
 
 function ensureUserTable() {
     db.exec(`
@@ -48,7 +55,7 @@ function resetUsers() {
 function seedProfiles() {
     const insert = db.prepare('INSERT INTO User (username, email, password, role, updatedAt) VALUES (?, ?, ?, ?, datetime(\'now\'))');
     const insertMany = db.transaction((rows) => {
-        for (const r of rows) insert.run(r.username, r.email, r.password, r.role || 'user');
+        for (const r of rows) insert.run(r.username, r.email, hashPassword(r.password), r.role || 'user');
     });
     insertMany(profiles);
 }
