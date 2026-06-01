@@ -1,9 +1,14 @@
+import { cookies } from 'next/headers';
+import { SESSION_COOKIE_NAME, verifySessionToken } from '@/src/lib/auth';
 import { PostService } from '@/src/services/post.service';
+import { PostCardActions } from '@/app/components/post-card-actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const posts = await PostService.getFeedPosts();
+  const cookieStore = await cookies();
+  const session = verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const posts = session ? await PostService.getFeedPostsForUser(session.userId) : await PostService.getFeedPosts();
 
   return (
     <section className="space-y-8">
@@ -37,6 +42,16 @@ export default async function Home() {
             <p className="mt-3 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
               {post.description}
             </p>
+
+            <div className="mt-5">
+              <PostCardActions
+                postId={post.id}
+                isLiked={post.isLiked}
+                isSaved={post.isSaved}
+                isOwnPost={post.isOwnPost}
+                canInteract={Boolean(session)}
+              />
+            </div>
           </article>
         ))}
       </div>

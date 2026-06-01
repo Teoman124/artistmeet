@@ -51,8 +51,8 @@ export default async function RootLayout({
                 </>
               ) : (
                 <>
-                  <Link href="/profile" className="px-3 hover:underline">
-                    Profile
+                  <Link href="/dashboard" className="px-3 hover:underline">
+                    Dashboard
                   </Link>
                   <Link href="/api/auth/logout" className="px-3 hover:underline">
                     Logout

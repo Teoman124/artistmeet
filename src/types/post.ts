@@ -4,4 +4,7 @@ export type PostFeedItem = {
     description: string;
     username: string;
     createdAt: Date;
+    isOwnPost?: boolean;
+    isLiked?: boolean;
+    isSaved?: boolean;
 };

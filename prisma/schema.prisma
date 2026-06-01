@@ -12,13 +12,15 @@ datasource db {
 }
 
 model User {
-  id        Int     @id @default(autoincrement())
-  username  String  @unique
-  email     String  @unique
-  password  String  // should be hashed (bcrypt)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        Int          @id @default(autoincrement())
+  username  String       @unique
+  email     String       @unique
+  password  String       // should be hashed (bcrypt)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
   posts     Post[]
+  likes     PostLike[]
+  savedPosts SavedPost[]
 }
 
 model Post {
@@ -28,4 +30,28 @@ model Post {
   userId      Int
   createdAt    DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id])
+  likes       PostLike[]
+  savedPosts  SavedPost[]
+}
+
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  postId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([userId, postId])
+}
+
+model SavedPost {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  postId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([userId, postId])
 }

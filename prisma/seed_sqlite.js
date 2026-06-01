@@ -179,6 +179,34 @@ function ensurePostTable() {
     }
 }
 
+function ensurePostLikeTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS PostLike (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER NOT NULL,
+            postId INTEGER NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE,
+            UNIQUE(userId, postId)
+        );
+    `);
+}
+
+function ensureSavedPostTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS SavedPost (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER NOT NULL,
+            postId INTEGER NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE,
+            UNIQUE(userId, postId)
+        );
+    `);
+}
+
 function resetUsers() {
     // Remove all existing users to rebuild from scratch
     db.exec('DELETE FROM User;');
@@ -189,6 +217,13 @@ function resetUsers() {
 function resetPosts() {
     db.exec('DELETE FROM Post;');
     db.exec("DELETE FROM sqlite_sequence WHERE name='Post';");
+}
+
+function resetPostRelations() {
+    db.exec('DELETE FROM PostLike;');
+    db.exec('DELETE FROM SavedPost;');
+    db.exec("DELETE FROM sqlite_sequence WHERE name='PostLike';");
+    db.exec("DELETE FROM sqlite_sequence WHERE name='SavedPost';");
 }
 
 function seedProfiles() {
@@ -219,6 +254,27 @@ function seedPosts() {
     insertMany(postSeeds);
 }
 
+function seedPostRelations() {
+    const posts = db.prepare('SELECT id FROM Post ORDER BY id ASC').all();
+    const users = db.prepare('SELECT id FROM User ORDER BY id ASC').all();
+
+    const likeInsert = db.prepare('INSERT OR IGNORE INTO PostLike (userId, postId, createdAt) VALUES (?, ?, datetime(\'now\'))');
+    const saveInsert = db.prepare('INSERT OR IGNORE INTO SavedPost (userId, postId, createdAt) VALUES (?, ?, datetime(\'now\'))');
+
+    const insertMany = db.transaction(() => {
+        for (let index = 0; index < users.length; index += 1) {
+            const user = users[index];
+            const likedPost = posts[(index + 1) % posts.length];
+            const savedPost = posts[(index + 2) % posts.length];
+
+            likeInsert.run(user.id, likedPost.id);
+            saveInsert.run(user.id, savedPost.id);
+        }
+    });
+
+    insertMany();
+}
+
 function showSample() {
     const rows = db.prepare('SELECT id, username, email, role, createdAt, updatedAt FROM User ORDER BY id LIMIT 20').all();
     console.log('Seeded users:', rows);
@@ -236,10 +292,14 @@ function showSample() {
 try {
     ensureUserTable();
     ensurePostTable();
-    resetUsers();
+    ensurePostLikeTable();
+    ensureSavedPostTable();
+    resetPostRelations();
     resetPosts();
+    resetUsers();
     seedProfiles();
     seedPosts();
+    seedPostRelations();
     showSample();
     console.log('Seeding complete.');
     process.exitCode = 0;
