@@ -7,27 +7,27 @@ const Database = require('better-sqlite3');
 const dbPath = path.join(__dirname, 'dev.db');
 const db = new Database(dbPath);
 
-const userNames = [
-    'amelia',
-    'bram',
-    'cora',
-    'dylan',
-    'elaine',
-    'finn',
-    'gaia',
-    'hugo',
-    'iris',
-    'jasper',
-    'kiki',
-    'luca',
-    'mila',
-    'nolan',
-    'olivia',
-    'pablo',
-    'quinn',
-    'ravi',
-    'sara',
-    'timo'
+const userProfiles = [
+    { username: 'amelia', bio: 'Ambient producer who likes warm textures and live drums.' },
+    { username: 'bram', bio: 'Guitarist focused on heavy riffs and clean transitions.' },
+    { username: 'cora', bio: 'Songwriter who builds tracks around strong vocal hooks.' },
+    { username: 'dylan', bio: 'Sound designer collecting field recordings and synth layers.' },
+    { username: 'elaine', bio: 'Performer with an ear for tight rhythm sections.' },
+    { username: 'finn', bio: 'Bass player aiming for a deep pocket and simple arrangements.' },
+    { username: 'gaia', bio: 'Live set builder who prefers smooth, evolving structures.' },
+    { username: 'hugo', bio: 'Lyric writer sketching short ideas into full songs.' },
+    { username: 'iris', bio: 'Mixing experiments and bright melodic ideas.' },
+    { username: 'jasper', bio: 'Loop maker sharing quick drafts for collaborations.' },
+    { username: 'kiki', bio: 'Rehearsal recorder and arrangement note taker.' },
+    { username: 'luca', bio: 'Melody tester keeping things simple and memorable.' },
+    { username: 'mila', bio: 'Producer focusing on contrast and dynamics.' },
+    { username: 'nolan', bio: 'Chorus rewriter making hooks hit harder.' },
+    { username: 'olivia', bio: 'Demo maker who moves fast from idea to sketch.' },
+    { username: 'pablo', bio: 'Raw session capturer preserving energy before polishing.' },
+    { username: 'quinn', bio: 'Lead texture shaper with a taste for movement.' },
+    { username: 'ravi', bio: 'Arrangement builder stacking energy in the right places.' },
+    { username: 'sara', bio: 'Collaboration starter with a clean, minimal style.' },
+    { username: 'timo', bio: 'Atmospheric instrumental drafts and wide soundscapes.' }
 ];
 
 const postSeeds = [
@@ -126,6 +126,7 @@ function ensureUserTable() {
       username TEXT NOT NULL UNIQUE,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
+    bio TEXT NOT NULL DEFAULT '',
             role TEXT DEFAULT 'user',
             createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
             updatedAt DATETIME
@@ -136,8 +137,12 @@ function ensureUserTable() {
     try {
         const cols = db.prepare("PRAGMA table_info('User')").all();
         const hasRole = cols.some((c) => c.name === 'role');
+        const hasBio = cols.some((c) => c.name === 'bio');
         if (!hasRole) {
             db.exec("ALTER TABLE User ADD COLUMN role TEXT DEFAULT 'user';");
+        }
+        if (!hasBio) {
+            db.exec("ALTER TABLE User ADD COLUMN bio TEXT NOT NULL DEFAULT ''; ");
         }
     } catch {
         // ignore
@@ -227,16 +232,17 @@ function resetPostRelations() {
 }
 
 function seedProfiles() {
-    const profiles = userNames.map((username, index) => ({
-        username,
-        email: `${username}@example.com`,
+    const profiles = userProfiles.map((profile, index) => ({
+        username: profile.username,
+        email: `${profile.username}@example.com`,
         password: 'password',
-        role: index === 0 ? 'admin' : 'user'
+        role: index === 0 ? 'admin' : 'user',
+        bio: profile.bio
     }));
 
-    const insert = db.prepare('INSERT INTO User (username, email, password, role, updatedAt) VALUES (?, ?, ?, ?, datetime(\'now\'))');
+    const insert = db.prepare('INSERT INTO User (username, email, password, role, bio, updatedAt) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))');
     const insertMany = db.transaction((rows) => {
-        for (const r of rows) insert.run(r.username, r.email, hashPassword(r.password), r.role || 'user');
+        for (const r of rows) insert.run(r.username, r.email, hashPassword(r.password), r.role || 'user', r.bio || '');
     });
     insertMany(profiles);
 }
@@ -276,7 +282,7 @@ function seedPostRelations() {
 }
 
 function showSample() {
-    const rows = db.prepare('SELECT id, username, email, role, createdAt, updatedAt FROM User ORDER BY id LIMIT 20').all();
+    const rows = db.prepare('SELECT id, username, email, bio, role, createdAt, updatedAt FROM User ORDER BY id LIMIT 20').all();
     console.log('Seeded users:', rows);
 
     const posts = db.prepare(`

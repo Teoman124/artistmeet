@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/src/lib/auth";
+import { ProfileMenu } from "@/app/components/profile-menu";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,12 +35,12 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[color:var(--background)] text-[color:var(--foreground)]">
-        <header className="w-full bg-white/70 dark:bg-black/70 backdrop-blur-sm shadow-sm">
+        <header className="sticky top-0 z-50 w-full bg-white/70 dark:bg-black/70 backdrop-blur-sm shadow-sm">
           <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
             <Link href="/" className="text-lg font-semibold">
               ArtistMeet
             </Link>
-            <nav className="text-sm text-gray-600 dark:text-gray-300">
+            <nav className="relative text-sm text-gray-600 dark:text-gray-300">
               {!session ? (
                 <>
                   <Link href="/login" className="px-3 hover:underline">
@@ -51,12 +52,7 @@ export default async function RootLayout({
                 </>
               ) : (
                 <>
-                  <Link href="/dashboard" className="px-3 hover:underline">
-                    Dashboard
-                  </Link>
-                  <Link href="/api/auth/logout" className="px-3 hover:underline">
-                    Logout
-                  </Link>
+                  <ProfileMenu username={session.username} />
                 </>
               )}
             </nav>

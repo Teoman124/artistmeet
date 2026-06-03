@@ -37,7 +37,7 @@ export class PostService {
             Post.title,
             Post.description,
             User.username,
-            Post.createdAt
+                        Post.createdAt
           FROM Post
           INNER JOIN User ON User.id = Post.userId
           ORDER BY Post.id DESC`

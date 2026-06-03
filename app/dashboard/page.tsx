@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME, verifySessionToken } from '@/src/lib/auth';
 import { getDatabase } from '@/src/lib/db';
 import { PostService } from '@/src/services/post.service';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,9 @@ function PostGrid({ title, description, posts }: { title: string; description: s
                     {posts.map((post) => (
                         <article key={post.id} className="rounded-2xl border border-black/10 bg-neutral-50 p-5 dark:border-white/10 dark:bg-white/5">
                             <p className="text-xs font-medium uppercase tracking-[0.28em] text-neutral-500 dark:text-neutral-400">
-                                {post.username}
+                                <Link href={`/profile/${post.username}`} className="hover:underline">
+                                    {post.username}
+                                </Link>
                             </p>
                             <h3 className="mt-2 text-lg font-semibold text-neutral-950 dark:text-white">{post.title}</h3>
                             <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-300">{post.description}</p>

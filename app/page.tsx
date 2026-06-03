@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { SESSION_COOKIE_NAME, verifySessionToken } from '@/src/lib/auth';
 import { PostService } from '@/src/services/post.service';
 import { PostCardActions } from '@/app/components/post-card-actions';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,9 @@ export default async function Home() {
             className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-neutral-950"
           >
             <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-              {post.username}
+              <Link href={`/profile/${post.username}`} className="hover:underline">
+                {post.username}
+              </Link>
             </p>
             <h2 className="mt-3 text-xl font-semibold text-neutral-950 dark:text-white">
               {post.title}
