@@ -4,7 +4,7 @@ import { SESSION_COOKIE_NAME, verifySessionToken } from '@/src/lib/auth';
 import { UserService } from '@/src/services/user.service';
 import { PostService } from '@/src/services/post.service';
 import Link from 'next/link';
-import { Young_Serif } from 'next/font/google';
+import AvatarUpload from '@/app/components/AvatarUpload';
 
 export default async function ProfilePage() {
   const cookieStore = await cookies();
@@ -26,13 +26,12 @@ export default async function ProfilePage() {
     <section className="space-y-8">
       <div className="rounded-3xl border border-black/10 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-neutral-950">
         <div className="flex flex-col gap-6 md:flex-row md:items-center">
-          <div className="h-28 w-28 overflow-hidden rounded-full border border-black/10 bg-neutral-100 shadow-sm dark:border-white/10 dark:bg-white/5">
-            <img
-              src="/zapppppaaaaa.jpg"
-              alt="Profile avatar"
-              className="h-full w-full object-cover"
-            />
-          </div>
+          {/* Avatar Upload Component - onAvatarUpdate verwijderd */}
+          <AvatarUpload
+            userId={user.id}
+            currentAvatarUrl={user.avatar_url}
+            username={user.username}
+          />
 
           <div className="flex-1 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.35em] text-neutral-500 dark:text-neutral-400">
@@ -75,7 +74,9 @@ export default async function ProfilePage() {
         </div>
         <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-950">
           <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Profile picture</p>
-          <p className="mt-2 text-base font-medium text-neutral-950 dark:text-white">Default Zappa avatar</p>
+          <p className="mt-2 text-base font-medium text-neutral-950 dark:text-white">
+            {user.avatar_url ? 'Custom avatar uploaded' : 'Using default avatar'}
+          </p>
         </div>
       </div>
 

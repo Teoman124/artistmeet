@@ -126,10 +126,11 @@ function ensureUserTable() {
       username TEXT NOT NULL UNIQUE,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
-    bio TEXT NOT NULL DEFAULT '',
-            role TEXT DEFAULT 'user',
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updatedAt DATETIME
+      bio TEXT NOT NULL DEFAULT '',
+      role TEXT DEFAULT 'user',
+      avatar_url TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME
     );
   `);
 
@@ -138,11 +139,16 @@ function ensureUserTable() {
         const cols = db.prepare("PRAGMA table_info('User')").all();
         const hasRole = cols.some((c) => c.name === 'role');
         const hasBio = cols.some((c) => c.name === 'bio');
+        const hasAvatarUrl = cols.some((c) => c.name === 'avatar_url');
+
         if (!hasRole) {
             db.exec("ALTER TABLE User ADD COLUMN role TEXT DEFAULT 'user';");
         }
         if (!hasBio) {
-            db.exec("ALTER TABLE User ADD COLUMN bio TEXT NOT NULL DEFAULT ''; ");
+            db.exec("ALTER TABLE User ADD COLUMN bio TEXT NOT NULL DEFAULT '';");
+        }
+        if (!hasAvatarUrl) {
+            db.exec("ALTER TABLE User ADD COLUMN avatar_url TEXT;");
         }
     } catch {
         // ignore

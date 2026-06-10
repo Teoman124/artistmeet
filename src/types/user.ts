@@ -4,6 +4,8 @@ export type User = {
   email: string
   password: string
   bio?: string | null
+  avatar_url?: string | null  // Voeg deze toe
+  role?: string  // Voeg role toe
   createdAt: Date
   updatedAt: Date
 }
@@ -21,7 +23,8 @@ export type PublicProfile = {
   username: string
   email: string
   bio: string | null
-  role: string
+  role: string  // Dit is nu verplicht in PublicProfile
+  avatar_url: string | null  // Voeg deze toe
   createdAt: Date
   updatedAt: Date
 }

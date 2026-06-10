@@ -9,6 +9,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -17,6 +18,8 @@ model User {
   email     String       @unique
   password  String       // should be hashed (bcrypt)
   bio       String       @default("")
+  avatar_url String?     
+  role      String       @default("user")  // ← Voeg role toe
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   posts     Post[]
@@ -29,7 +32,8 @@ model Post {
   title       String
   description String
   userId      Int
-  createdAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt  // ← Voeg updatedAt toe
   user        User     @relation(fields: [userId], references: [id])
   likes       PostLike[]
   savedPosts  SavedPost[]

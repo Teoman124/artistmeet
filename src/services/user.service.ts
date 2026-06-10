@@ -1,141 +1,143 @@
 import { hashPassword } from '@/src/lib/auth'
-import { getDatabase } from '@/src/lib/db'
+import { prisma } from '@/src/lib/prisma'
 import { CreateUserInput, PublicProfile, UserResponse } from '@/src/types/user'
-
-type UserRow = {
-  id: number
-  username: string
-  email: string
-  password?: string
-  bio?: string | null
-  role?: string
-  createdAt: string
-  updatedAt: string
-}
-
-function mapUser(row: UserRow): UserResponse {
-  return {
-    id: row.id,
-    username: row.username,
-    email: row.email,
-    bio: row.bio ?? null,
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt)
-  }
-}
-
-function mapPublicProfile(row: UserRow): PublicProfile {
-  return {
-    id: row.id,
-    username: row.username,
-    email: row.email,
-    bio: row.bio ?? null,
-    role: row.role ?? 'user',
-    createdAt: new Date(row.createdAt),
-    updatedAt: new Date(row.updatedAt)
-  }
-}
 
 export class UserService {
   /**
-   * Create a new user (password should be hashed before calling this)
+   * Create a new user
    */
   static async createUser(data: CreateUserInput): Promise<UserResponse> {
-    const database = getDatabase()
-
-    try {
-      const hashedPassword = hashPassword(data.password)
-      const result = database
-        .prepare("INSERT INTO User (username, email, password, role, bio, updatedAt) VALUES (?, ?, ?, 'user', '', datetime('now'))")
-        .run(data.username, data.email, hashedPassword)
-
-      const user = database
-        .prepare('SELECT id, username, email, bio, createdAt, updatedAt FROM User WHERE id = ? LIMIT 1')
-        .get(result.lastInsertRowid) as UserRow | undefined
-
-      if (!user) {
-        throw new Error('User could not be created')
+    const hashedPassword = hashPassword(data.password)
+    
+    const user = await prisma.user.create({
+      data: {
+        username: data.username,
+        email: data.email,
+        password: hashedPassword,
+        bio: "",
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        avatar_url: true,
+        createdAt: true,
+        updatedAt: true,
       }
-
-      return mapUser(user)
-    } finally {
-      database.close()
-    }
+    })
+    
+    return user
   }
 
   /**
-   * Get user by ID (without password)
+   * Get user by ID
    */
   static async getUserById(id: number): Promise<UserResponse | null> {
-    const database = getDatabase()
-
-    try {
-      const user = database
-        .prepare('SELECT id, username, email, bio, createdAt, updatedAt FROM User WHERE id = ? LIMIT 1')
-        .get(id) as UserRow | undefined
-
-      return user ? mapUser(user) : null
-    } finally {
-      database.close()
-    }
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        avatar_url: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    })
+    
+    return user
   }
 
   /**
    * Get user by email (with password for auth)
    */
   static async getUserByEmail(email: string) {
-    const database = getDatabase()
-
-    try {
-      return database
-        .prepare('SELECT * FROM User WHERE lower(email) = lower(?) LIMIT 1')
-        .get(email)
-    } finally {
-      database.close()
-    }
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    })
+    
+    return user
   }
 
   /**
-   * Get all users (without passwords)
+   * Get all users
    */
   static async getAllUsers(): Promise<UserResponse[]> {
-    const database = getDatabase()
-
-    try {
-      const users = database
-        .prepare('SELECT id, username, email, bio, createdAt, updatedAt FROM User ORDER BY id ASC')
-        .all() as UserRow[]
-
-      return users.map(mapUser)
-    } finally {
-      database.close()
-    }
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        avatar_url: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        id: 'asc'
+      }
+    })
+    
+    return users
   }
 
   /**
    * Delete user
    */
   static async deleteUser(id: number): Promise<void> {
-    const database = getDatabase()
+    await prisma.user.delete({
+      where: { id }
+    })
+  }
 
-    try {
-      database.prepare('DELETE FROM User WHERE id = ?').run(id)
-    } finally {
-      database.close()
+  /**
+   * Get user by username
+   */
+  static async getUserByUsername(username: string): Promise<PublicProfile | null> {
+    const user = await prisma.user.findUnique({
+      where: { username: username.toLowerCase() },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        avatar_url: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    })
+    
+    if (!user) return null
+    
+    return {
+      ...user,
+      role: 'user', // Default role since it's not in schema yet
     }
   }
 
-  static async getUserByUsername(username: string): Promise<PublicProfile | null> {
-    const database = getDatabase()
-
-    try {
-      const user = database
-        .prepare('SELECT id, username, email, bio, role, createdAt, updatedAt FROM User WHERE lower(username) = lower(?) LIMIT 1')
-        .get(username) as UserRow | undefined
-
-      return user ? mapPublicProfile(user) : null
-    } finally {
-      database.close()
-    }
+  /**
+   * Update user avatar
+   */
+  static async updateUserAvatar(userId: number, avatarUrl: string | null): Promise<UserResponse | null> {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        avatar_url: avatarUrl,
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        bio: true,
+        avatar_url: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    })
+    
+    return user
   }
 }
