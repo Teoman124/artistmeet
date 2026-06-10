@@ -5,10 +5,14 @@ import Link from 'next/link';
 
 type ProfileMenuProps = {
     username: string;
+    avatarUrl?: string | null;
 };
 
-export function ProfileMenu({ username }: ProfileMenuProps) {
+export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
+    
+    // Gebruik de avatarUrl van de server, val terug naar default Zappa foto
+    const displayAvatar = avatarUrl || '/zapppppaaaaa.jpg';
 
     return (
         <div className="relative">
@@ -19,10 +23,13 @@ export function ProfileMenu({ username }: ProfileMenuProps) {
                 className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white shadow-sm transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
             >
                 <img
-                    src="/zapppppaaaaa.jpg"
+                    src={displayAvatar}
                     alt=""
                     aria-hidden="true"
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/zapppppaaaaa.jpg';
+                    }}
                 />
             </button>
 

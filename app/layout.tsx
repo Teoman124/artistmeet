@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/src/lib/auth";
+import { UserService } from "@/src/services/user.service";
 import { ProfileMenu } from "@/app/components/profile-menu";
 import "./globals.css";
 
@@ -29,6 +30,18 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const session = verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
 
+  // Haal de user data op voor de avatar URL
+  let userAvatarUrl = null;
+  let username = '';
+
+  if (session) {
+    const user = await UserService.getUserByUsername(session.username);
+    if (user) {
+      username = user.username;
+      userAvatarUrl = user.avatar_url;
+    }
+  }
+
   return (
     <html
       lang="en"
@@ -52,7 +65,7 @@ export default async function RootLayout({
                 </>
               ) : (
                 <>
-                  <ProfileMenu username={session.username} />
+                  <ProfileMenu username={username} avatarUrl={userAvatarUrl} />
                 </>
               )}
             </nav>
