@@ -113,6 +113,24 @@ const postSeeds = [
     }
 ];
 
+const commentSeeds = [
+    "Great post! Really inspiring! 🎵",
+    "Thanks for sharing this! 🙌",
+    "Love the vibe of this track! 🔥",
+    "Looking forward to more content like this! ✨",
+    "This is exactly what I needed to hear! 🎧",
+    "Amazing work, keep it up! 💪",
+    "Thanks for the detailed explanation! 📝",
+    "This resonates with my experience! 🎯",
+    "Can't wait to try this out! 🚀",
+    "Really helpful, appreciate it! 👍",
+    "Beautiful composition! 🎹",
+    "The production quality is top notch! 🎛️",
+    "This gave me so many ideas! 💡",
+    "Love the arrangement! 🎶",
+    "So creative! Keep creating! 🎨"
+];
+
 function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('base64url');
     const derivedKey = crypto.scryptSync(password, salt, 64).toString('base64url');
@@ -134,7 +152,6 @@ function ensureUserTable() {
     );
   `);
 
-    // If the table exists but role column is missing, add it.
     try {
         const cols = db.prepare("PRAGMA table_info('User')").all();
         const hasRole = cols.some((c) => c.name === 'role');
@@ -177,11 +194,9 @@ function ensurePostTable() {
         if (!hasDescription) {
             db.exec("ALTER TABLE Post ADD COLUMN description TEXT NOT NULL DEFAULT '';");
         }
-
         if (!hasCreatedAt) {
             db.exec("ALTER TABLE Post ADD COLUMN createdAt DATETIME DEFAULT CURRENT_TIMESTAMP;");
         }
-
         if (!hasUpdatedAt) {
             db.exec("ALTER TABLE Post ADD COLUMN updatedAt DATETIME;");
         }
@@ -218,10 +233,23 @@ function ensureSavedPostTable() {
     `);
 }
 
+function ensureCommentTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Comment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL,
+            userId INTEGER NOT NULL,
+            postId INTEGER NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME,
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE
+        );
+    `);
+}
+
 function resetUsers() {
-    // Remove all existing users to rebuild from scratch
     db.exec('DELETE FROM User;');
-    // Reset sqlite_sequence for AUTOINCREMENT
     db.exec("DELETE FROM sqlite_sequence WHERE name='User';");
 }
 
@@ -235,6 +263,11 @@ function resetPostRelations() {
     db.exec('DELETE FROM SavedPost;');
     db.exec("DELETE FROM sqlite_sequence WHERE name='PostLike';");
     db.exec("DELETE FROM sqlite_sequence WHERE name='SavedPost';");
+}
+
+function resetComments() {
+    db.exec('DELETE FROM Comment;');
+    db.exec("DELETE FROM sqlite_sequence WHERE name='Comment';");
 }
 
 function seedProfiles() {
@@ -287,9 +320,32 @@ function seedPostRelations() {
     insertMany();
 }
 
+function seedComments() {
+    const users = db.prepare('SELECT id FROM User ORDER BY id ASC').all();
+    const posts = db.prepare('SELECT id FROM Post ORDER BY id ASC').all();
+
+    const insert = db.prepare('INSERT INTO Comment (content, userId, postId, createdAt, updatedAt) VALUES (?, ?, ?, datetime(\'now\'), datetime(\'now\'))');
+    const insertMany = db.transaction(() => {
+        // Iedere post krijgt 2-4 random comments
+        for (let i = 0; i < posts.length; i++) {
+            const post = posts[i];
+            // Random aantal comments tussen 2 en 5
+            const numComments = Math.floor(Math.random() * 4) + 2;
+
+            for (let j = 0; j < numComments && j < users.length; j++) {
+                const user = users[j % users.length];
+                const randomComment = commentSeeds[Math.floor(Math.random() * commentSeeds.length)];
+                insert.run(randomComment, user.id, post.id);
+            }
+        }
+    });
+
+    insertMany();
+}
+
 function showSample() {
-    const rows = db.prepare('SELECT id, username, email, bio, role, createdAt, updatedAt FROM User ORDER BY id LIMIT 20').all();
-    console.log('Seeded users:', rows);
+    const rows = db.prepare('SELECT id, username, email, bio, role, avatar_url, createdAt, updatedAt FROM User ORDER BY id LIMIT 20').all();
+    console.log('Seeded users:', rows.length);
 
     const posts = db.prepare(`
       SELECT Post.id, Post.title, Post.description, User.username
@@ -298,7 +354,17 @@ function showSample() {
       ORDER BY Post.id ASC
       LIMIT 20
     `).all();
-    console.log('Seeded posts:', posts);
+    console.log('Seeded posts:', posts.length);
+
+    const comments = db.prepare(`
+      SELECT Comment.id, Comment.content, User.username, Post.title as postTitle
+      FROM Comment
+      INNER JOIN User ON User.id = Comment.userId
+      INNER JOIN Post ON Post.id = Comment.postId
+      ORDER BY Comment.id ASC
+      LIMIT 20
+    `).all();
+    console.log('Seeded comments:', comments.length);
 }
 
 try {
@@ -306,12 +372,15 @@ try {
     ensurePostTable();
     ensurePostLikeTable();
     ensureSavedPostTable();
+    ensureCommentTable();
     resetPostRelations();
+    resetComments();
     resetPosts();
     resetUsers();
     seedProfiles();
     seedPosts();
     seedPostRelations();
+    seedComments();
     showSample();
     console.log('Seeding complete.');
     process.exitCode = 0;

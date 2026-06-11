@@ -75,53 +75,65 @@ export class PostService {
         }
     }
 
-    static async getLikedPostsByUserId(userId: number): Promise<PostFeedItem[]> {
+    static async getLikedPostsByUserId(userId: number): Promise<any[]> {
         const database = getDatabase();
 
         try {
             const posts = database
                 .prepare(
                     `SELECT
-                        Post.id,
-                        Post.title,
-                        Post.description,
-                        User.username,
-                        Post.createdAt
-                    FROM PostLike
-                    INNER JOIN Post ON Post.id = PostLike.postId
-                    INNER JOIN User ON User.id = Post.userId
-                    WHERE PostLike.userId = ?
-                    ORDER BY PostLike.createdAt DESC`
+                    Post.id,
+                    Post.title,
+                    Post.description,
+                    User.username,
+                    Post.createdAt
+                FROM PostLike
+                INNER JOIN Post ON Post.id = PostLike.postId
+                INNER JOIN User ON User.id = Post.userId
+                WHERE PostLike.userId = ?
+                ORDER BY PostLike.createdAt DESC`
                 )
-                .all(userId) as PostRow[];
+                .all(userId) as any[];
 
-            return posts.map(mapPost);
+            return posts.map(post => ({
+                id: post.id,
+                title: post.title,
+                description: post.description,
+                username: post.username,
+                createdAt: new Date(post.createdAt)
+            }));
         } finally {
             database.close();
         }
     }
 
-    static async getSavedPostsByUserId(userId: number): Promise<PostFeedItem[]> {
+    static async getSavedPostsByUserId(userId: number): Promise<any[]> {
         const database = getDatabase();
 
         try {
             const posts = database
                 .prepare(
                     `SELECT
-                        Post.id,
-                        Post.title,
-                        Post.description,
-                        User.username,
-                        Post.createdAt
-                    FROM SavedPost
-                    INNER JOIN Post ON Post.id = SavedPost.postId
-                    INNER JOIN User ON User.id = Post.userId
-                    WHERE SavedPost.userId = ?
-                    ORDER BY SavedPost.createdAt DESC`
+                    Post.id,
+                    Post.title,
+                    Post.description,
+                    User.username,
+                    Post.createdAt
+                FROM SavedPost
+                INNER JOIN Post ON Post.id = SavedPost.postId
+                INNER JOIN User ON User.id = Post.userId
+                WHERE SavedPost.userId = ?
+                ORDER BY SavedPost.createdAt DESC`
                 )
-                .all(userId) as PostRow[];
+                .all(userId) as any[];
 
-            return posts.map(mapPost);
+            return posts.map(post => ({
+                id: post.id,
+                title: post.title,
+                description: post.description,
+                username: post.username,
+                createdAt: new Date(post.createdAt)
+            }));
         } finally {
             database.close();
         }

@@ -10,8 +10,6 @@ type ProfileMenuProps = {
 
 export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
-    
-    // Gebruik de avatarUrl van de server, val terug naar default Zappa foto
     const displayAvatar = avatarUrl || '/zapppppaaaaa.jpg';
 
     return (
@@ -33,19 +31,23 @@ export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
                 />
             </button>
 
-            {isOpen ? (
+            {isOpen && (
                 <div className="absolute right-0 top-full z-20 mt-3 w-56 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-lg dark:border-white/10 dark:bg-neutral-950">
                     <div className="border-b border-black/5 px-4 py-3 dark:border-white/10">
                         <p className="text-xs uppercase tracking-[0.3em] text-neutral-500 dark:text-neutral-400">{username}</p>
                     </div>
 
                     <div className="flex flex-col p-2 text-sm">
+                        {/* Dashboard - voor eigen statistieken en detail pagina's */}
                         <Link href="/dashboard" onClick={() => setIsOpen(false)} className="rounded-xl px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-white/10">
                             Dashboard
                         </Link>
-                        <Link href="/profile" onClick={() => setIsOpen(false)} className="rounded-xl px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-white/10">
+
+                        {/* My profile - gaat naar publieke profiel pagina */}
+                        <Link href={`/profile/${username}`} onClick={() => setIsOpen(false)} className="rounded-xl px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-white/10">
                             My profile
                         </Link>
+
                         <Link href="/settings" onClick={() => setIsOpen(false)} className="rounded-xl px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-white/10">
                             Settings
                         </Link>
@@ -65,7 +67,7 @@ export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
                         </Link>
                     </div>
                 </div>
-            ) : null}
+            )}
         </div>
     );
 }
