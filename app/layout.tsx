@@ -49,7 +49,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[color:var(--background)] text-[color:var(--foreground)]">
         <header className="sticky top-0 z-50 w-full bg-white/70 dark:bg-black/70 backdrop-blur-sm shadow-sm">
-          <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
+          <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
             <Link href="/" className="text-lg font-semibold">
               ArtistMeet
             </Link>
@@ -73,11 +73,11 @@ export default async function RootLayout({
         </header>
 
         <main className="flex-1">
-          <div className="mx-auto max-w-4xl px-4 py-10">{children}</div>
+          <div className="mx-auto max-w-7xl px-4 py-10">{children}</div>
         </main>
 
         <footer className="w-full border-t border-gray-200 dark:border-gray-800">
-          <div className="mx-auto max-w-4xl px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
             © {new Date().getFullYear()} ArtistMeet, All rights reserved.
           </div>
         </footer>
