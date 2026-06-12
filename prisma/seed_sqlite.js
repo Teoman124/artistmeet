@@ -30,7 +30,6 @@ const userProfiles = [
     { username: 'timo', bio: 'Atmospheric instrumental drafts and wide soundscapes.' }
 ];
 
-// Meer posts toegevoegd (40 totaal)
 const postSeeds = [
     { title: 'Studio Notes from Last Night', description: 'A quick recap of the drum takes, synth layers, and the parts that finally clicked.' },
     { title: 'New Vocal Demo', description: 'Trying a warmer vocal take with a softer arrangement and more room in the mix.' },
@@ -52,7 +51,6 @@ const postSeeds = [
     { title: 'Arrangement Idea', description: 'Testing a bigger buildup before the final section to make the payoff land harder.' },
     { title: 'Fresh Draft', description: 'A new starting point for the collaboration thread, kept intentionally simple.' },
     { title: 'Instrumental Update', description: 'The latest export leans more atmospheric and gives the lead room to breathe.' },
-    // Extra posts
     { title: 'Behind the Scenes', description: 'A look at how I created the drum patterns for the latest track.' },
     { title: 'Gear Talk', description: 'My favorite plugins and hardware for this project.' },
     { title: 'Live Performance Tips', description: 'Things I learned from my last show that improved my setup.' },
@@ -65,7 +63,6 @@ const postSeeds = [
     { title: 'Creative Block', description: 'How I overcome creative ruts and find new inspiration.' }
 ];
 
-// Meer comments
 const commentSeeds = [
     "Great post! Really inspiring! 🎵",
     "Thanks for sharing this! 🙌",
@@ -94,6 +91,29 @@ const commentSeeds = [
     "This is going in my inspiration folder! 📁"
 ];
 
+const messageSeeds = [
+    "Hey! Love your music! 🎵",
+    "Thanks for the follow! 🙌",
+    "Want to collaborate on a track? 🎸",
+    "Your latest post is amazing! 🔥",
+    "Would love to hear more of your work! 🎧",
+    "Thanks for sharing your process! 📝",
+    "This is so inspiring! ✨",
+    "Keep up the great work! 💪",
+    "Hey, I really enjoyed your last track!",
+    "Would you be interested in a collab?",
+    "Thanks for the support! 🙏",
+    "Your style is unique, love it! 🎨",
+    "Just listened to your new demo, amazing!",
+    "Let me know if you want to jam sometime!",
+    "Your production quality is top notch!",
+    "Where do you find your inspiration?",
+    "This track gave me chills! 🥶",
+    "Can we work together on something?",
+    "Love the atmosphere in your music!",
+    "You're killing it lately! 🔥"
+];
+
 function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('base64url');
     const derivedKey = crypto.scryptSync(password, salt, 64).toString('base64url');
@@ -110,6 +130,7 @@ function ensureUserTable() {
       bio TEXT NOT NULL DEFAULT '',
       role TEXT DEFAULT 'user',
       avatar_url TEXT,
+      messagesOpen INTEGER DEFAULT 1,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME
     );
@@ -120,6 +141,7 @@ function ensureUserTable() {
         const hasRole = cols.some((c) => c.name === 'role');
         const hasBio = cols.some((c) => c.name === 'bio');
         const hasAvatarUrl = cols.some((c) => c.name === 'avatar_url');
+        const hasMessagesOpen = cols.some((c) => c.name === 'messagesOpen');
 
         if (!hasRole) {
             db.exec("ALTER TABLE User ADD COLUMN role TEXT DEFAULT 'user';");
@@ -129,6 +151,9 @@ function ensureUserTable() {
         }
         if (!hasAvatarUrl) {
             db.exec("ALTER TABLE User ADD COLUMN avatar_url TEXT;");
+        }
+        if (!hasMessagesOpen) {
+            db.exec("ALTER TABLE User ADD COLUMN messagesOpen INTEGER DEFAULT 1;");
         }
     } catch {
         // ignore
@@ -211,7 +236,6 @@ function ensureCommentTable() {
     `);
 }
 
-// Nieuwe functie voor Follow tabel
 function ensureFollowTable() {
     db.exec(`
         CREATE TABLE IF NOT EXISTS Follow (
@@ -223,6 +247,22 @@ function ensureFollowTable() {
             FOREIGN KEY (followerId) REFERENCES User(id) ON DELETE CASCADE,
             FOREIGN KEY (followingId) REFERENCES User(id) ON DELETE CASCADE,
             UNIQUE(followerId, followingId)
+        );
+    `);
+}
+
+function ensureMessageTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Message (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL,
+            senderId INTEGER NOT NULL,
+            receiverId INTEGER NOT NULL,
+            isRead INTEGER DEFAULT 0,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME,
+            FOREIGN KEY (senderId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (receiverId) REFERENCES User(id) ON DELETE CASCADE
         );
     `);
 }
@@ -252,6 +292,11 @@ function resetComments() {
 function resetFollows() {
     db.exec('DELETE FROM Follow;');
     db.exec("DELETE FROM sqlite_sequence WHERE name='Follow';");
+}
+
+function resetMessages() {
+    db.exec('DELETE FROM Message;');
+    db.exec("DELETE FROM sqlite_sequence WHERE name='Message';");
 }
 
 function seedProfiles() {
@@ -367,6 +412,32 @@ function seedFollows() {
     insertMany();
 }
 
+function seedMessages() {
+    const users = db.prepare('SELECT id FROM User ORDER BY id ASC').all();
+    const insert = db.prepare('INSERT INTO Message (content, senderId, receiverId, isRead, createdAt, updatedAt) VALUES (?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))');
+
+    const insertMany = db.transaction(() => {
+        for (let i = 0; i < users.length; i++) {
+            const sender = users[i];
+            // Iedere gebruiker stuurt 2-5 berichten
+            const numMessages = Math.floor(Math.random() * 4) + 2;
+
+            for (let j = 0; j < numMessages; j++) {
+                let receiver;
+                do {
+                    receiver = users[Math.floor(Math.random() * users.length)];
+                } while (receiver.id === sender.id);
+
+                const randomMessage = messageSeeds[Math.floor(Math.random() * messageSeeds.length)];
+                const isRead = Math.random() > 0.3 ? 1 : 0;
+                insert.run(randomMessage, sender.id, receiver.id, isRead);
+            }
+        }
+    });
+
+    insertMany();
+}
+
 function showSample() {
     const rows = db.prepare('SELECT id, username, email, bio, role, avatar_url, createdAt, updatedAt FROM User ORDER BY id LIMIT 20').all();
     console.log('Seeded users:', rows.length);
@@ -379,25 +450,20 @@ function showSample() {
     `).all();
     console.log('Seeded posts:', posts.length);
 
-    const comments = db.prepare(`
-      SELECT COUNT(*) as count FROM Comment
-    `).get();
+    const comments = db.prepare(`SELECT COUNT(*) as count FROM Comment`).get();
     console.log('Seeded comments:', comments.count);
 
-    const likes = db.prepare(`
-      SELECT COUNT(*) as count FROM PostLike
-    `).get();
+    const likes = db.prepare(`SELECT COUNT(*) as count FROM PostLike`).get();
     console.log('Seeded likes:', likes.count);
 
-    const saves = db.prepare(`
-      SELECT COUNT(*) as count FROM SavedPost
-    `).get();
+    const saves = db.prepare(`SELECT COUNT(*) as count FROM SavedPost`).get();
     console.log('Seeded saves:', saves.count);
 
-    const follows = db.prepare(`
-      SELECT COUNT(*) as count FROM Follow
-    `).get();
+    const follows = db.prepare(`SELECT COUNT(*) as count FROM Follow`).get();
     console.log('Seeded follows:', follows.count);
+
+    const messages = db.prepare(`SELECT COUNT(*) as count FROM Message`).get();
+    console.log('Seeded messages:', messages.count);
 }
 
 try {
@@ -406,17 +472,20 @@ try {
     ensurePostLikeTable();
     ensureSavedPostTable();
     ensureCommentTable();
-    ensureFollowTable();  // Nieuwe tabel
+    ensureFollowTable();
+    ensureMessageTable();
     resetPostRelations();
     resetComments();
     resetPosts();
     resetUsers();
-    resetFollows();  // Reset follows
+    resetFollows();
+    resetMessages();
     seedProfiles();
     seedPosts();
     seedPostRelations();
     seedComments();
-    seedFollows();   // Seed follows
+    seedFollows();
+    seedMessages();
     showSample();
     console.log('Seeding complete.');
     process.exitCode = 0;

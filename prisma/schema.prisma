@@ -16,18 +16,21 @@ model User {
   id        Int          @id @default(autoincrement())
   username  String       @unique
   email     String       @unique
-  password  String       // should be hashed (bcrypt)
+  password  String
   bio       String       @default("")
   avatar_url String?     
   role      String       @default("user")
+  messagesOpen Boolean   @default(true)  // Voeg deze toe!
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   posts     Post[]
   likes     PostLike[]
   savedPosts SavedPost[]
-  comments  Comment[]    // ⬅️ VOEG DIT TOE
+  comments  Comment[]
   following Follow[]     @relation("follower")
   followers Follow[]     @relation("following")
+  sentMessages Message[] @relation("sender")
+  receivedMessages Message[] @relation("receiver")
 }
 
 model Post {
@@ -89,4 +92,21 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  senderId  Int
+  receiverId Int
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sender   User @relation("sender", fields: [senderId], references: [id])
+  receiver User @relation("receiver", fields: [receiverId], references: [id])
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
 }

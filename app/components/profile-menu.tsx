@@ -40,6 +40,18 @@ export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
                     </div>
 
                     <div className="flex flex-col p-2 text-sm">
+                        {/* Messages - Nieuw! */}
+                        <Link
+                            href="/messages"
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-xl px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-white/10 flex items-center gap-2"
+                        >
+                            <span>💬</span>
+                            <span>Messages</span>
+                        </Link>
+
+                        <div className="border-t border-black/5 my-1 dark:border-white/10"></div>
+
                         <Link href="/dashboard" onClick={() => setIsOpen(false)} className="rounded-xl px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-white/10">
                             Dashboard
                         </Link>
@@ -52,15 +64,15 @@ export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
                             Settings
                         </Link>
 
-                        {/* Theme Switcher - 3 way switch */}
+                        {/* Theme Switcher */}
                         <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10">
                             <p className="px-3 py-1 text-xs text-neutral-500 dark:text-neutral-400">Theme</p>
                             <div className="flex gap-1 p-1 mt-1">
                                 <button
                                     onClick={() => setTheme('light')}
                                     className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${theme === 'light'
-                                            ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-white'
-                                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+                                        ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-white'
+                                        : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
                                         }`}
                                 >
                                     Light
@@ -68,8 +80,8 @@ export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
                                 <button
                                     onClick={() => setTheme('system')}
                                     className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${theme === 'system'
-                                            ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-white'
-                                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+                                        ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-white'
+                                        : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
                                         }`}
                                 >
                                     System
@@ -77,8 +89,8 @@ export function ProfileMenu({ username, avatarUrl }: ProfileMenuProps) {
                                 <button
                                     onClick={() => setTheme('dark')}
                                     className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${theme === 'dark'
-                                            ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-white'
-                                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+                                        ? 'bg-neutral-200 text-neutral-900 dark:bg-neutral-700 dark:text-white'
+                                        : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
                                         }`}
                                 >
                                     Dark

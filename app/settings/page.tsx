@@ -57,6 +57,11 @@ export default function SettingsPage() {
                     email: data.email,
                     avatar_url: data.avatar_url,
                 });
+
+                // Laad messagesOpen instelling uit database
+                if (data.messagesOpen !== undefined) {
+                    setPrivacySettings(prev => ({ ...prev, messagesOpen: data.messagesOpen }));
+                }
             } catch (error) {
                 console.error('Failed to fetch user data:', error);
                 router.push('/login');
@@ -66,11 +71,9 @@ export default function SettingsPage() {
         const loadPrivacySettings = () => {
             const savedLikedPublic = localStorage.getItem('likedPublic');
             const savedSavedPublic = localStorage.getItem('savedPublic');
-            const savedMessagesOpen = localStorage.getItem('messagesOpen');
 
             if (savedLikedPublic !== null) setPrivacySettings(prev => ({ ...prev, likedPublic: savedLikedPublic === 'true' }));
             if (savedSavedPublic !== null) setPrivacySettings(prev => ({ ...prev, savedPublic: savedSavedPublic === 'true' }));
-            if (savedMessagesOpen !== null) setPrivacySettings(prev => ({ ...prev, messagesOpen: savedMessagesOpen === 'true' }));
         };
 
         checkAuthAndLoadUser();
@@ -154,10 +157,33 @@ export default function SettingsPage() {
         }
     };
 
-    // Update privacy instellingen
-    const handlePrivacyChange = (key: keyof typeof privacySettings, value: boolean) => {
+    // Update privacy instellingen - VERBETERDE VERSIE
+    const handlePrivacyChange = async (key: keyof typeof privacySettings, value: boolean) => {
         setPrivacySettings(prev => ({ ...prev, [key]: value }));
-        localStorage.setItem(key, String(value));
+
+        if (key === 'messagesOpen') {
+            // messagesOpen wordt opgeslagen in de database
+            try {
+                const response = await fetch('/api/users/privacy', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messagesOpen: value }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save privacy setting');
+                }
+            } catch (error) {
+                console.error('Failed to save privacy setting:', error);
+                setMessage({ type: 'error', text: 'Failed to save privacy setting' });
+                setTimeout(() => setMessage(null), 2000);
+                return;
+            }
+        } else {
+            // likedPublic en savedPublic worden opgeslagen in localStorage
+            localStorage.setItem(key, String(value));
+        }
+
         setMessage({ type: 'success', text: 'Privacy settings saved!' });
         setTimeout(() => setMessage(null), 2000);
     };
@@ -201,11 +227,10 @@ export default function SettingsPage() {
                 </p>
             </div>
 
-            {/* Profile Settings - Geen wachtwoord */}
+            {/* Profile Settings */}
             <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-950">
                 <h2 className="text-xl font-semibold text-neutral-950 dark:text-white mb-4">Profile information</h2>
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
-                    {/* Profile Picture Upload */}
                     <div className="flex items-center gap-6">
                         <AvatarUpload
                             userId={userData.id}
@@ -268,7 +293,7 @@ export default function SettingsPage() {
                 </form>
             </div>
 
-            {/* Password Settings - Apart */}
+            {/* Password Settings */}
             <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-950">
                 <h2 className="text-xl font-semibold text-neutral-950 dark:text-white mb-4">Change password</h2>
                 <form onSubmit={handlePasswordUpdate} className="space-y-4">
@@ -453,7 +478,7 @@ export default function SettingsPage() {
                 </div>
                 {theme === 'system' && (
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                        Currently using {theme} mode based on your system preferences.
+                        Currently using system mode based on your system preferences.
                     </p>
                 )}
             </div>

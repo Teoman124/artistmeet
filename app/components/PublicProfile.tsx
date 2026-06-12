@@ -410,17 +410,16 @@ export function PublicProfile({
                                 </button>
                             </div>
 
-                            {/* Buttons: Follow + Message (alleen voor anderen) */}
+                            {/* Buttons: Follow + Message (alleen voor anderen) - Message button is nu een Link */}
                             {!isOwnProfile && (
                                 <div className="flex flex-wrap gap-3 pt-2">
                                     <FollowButton username={user.username} />
-                                    <button
-                                        type="button"
-                                        disabled
-                                        className="rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white opacity-70 dark:bg-white dark:text-neutral-950"
+                                    <Link
+                                        href={`/messages/${user.username}`}
+                                        className="rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
                                     >
                                         Message
-                                    </button>
+                                    </Link>
                                 </div>
                             )}
                         </div>
