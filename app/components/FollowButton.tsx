@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 
 type FollowButtonProps = {
     username: string;
+    onFollowChange?: (isFollowing: boolean) => void;
 };
 
-export function FollowButton({ username }: FollowButtonProps) {
+export function FollowButton({ username, onFollowChange }: FollowButtonProps) {
     const [isFollowing, setIsFollowing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [isReady, setIsReady] = useState(false);
     const router = useRouter();
 
     // Haal follow status op
@@ -25,7 +26,7 @@ export function FollowButton({ username }: FollowButtonProps) {
             } catch (error) {
                 console.error('Failed to fetch follow status:', error);
             } finally {
-                setIsInitialLoading(false);
+                setIsReady(true);
             }
         };
 
@@ -49,8 +50,19 @@ export function FollowButton({ username }: FollowButtonProps) {
             const data = await response.json();
 
             if (response.ok) {
-                setIsFollowing(data.following);
+                // Update de lokale state
+                const newState = data.following;
+                setIsFollowing(newState);
+
+                // Notify parent van de change
+                if (onFollowChange) {
+                    onFollowChange(newState);
+                }
+
+                // Refresh de page voor de counts
                 router.refresh();
+            } else {
+                console.error('Failed to follow:', data.error);
             }
         } catch (error) {
             console.error('Follow action failed:', error);
@@ -59,14 +71,9 @@ export function FollowButton({ username }: FollowButtonProps) {
         }
     };
 
-    if (isInitialLoading) {
+    if (!isReady) {
         return (
-            <button
-                disabled
-                className="px-4 py-2 rounded-full text-sm font-medium bg-neutral-200 dark:bg-neutral-700 text-neutral-500"
-            >
-                Loading...
-            </button>
+            <div className="px-4 py-2 rounded-full text-sm font-medium bg-neutral-200 dark:bg-neutral-700 text-neutral-500 animate-pulse w-20 h-9" />
         );
     }
 
