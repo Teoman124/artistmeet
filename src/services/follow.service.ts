@@ -1,4 +1,5 @@
 import { getDatabase } from '@/src/lib/db';
+import { NotificationService } from './notification.service';
 
 export type FollowRelation = {
     id: number;
@@ -52,8 +53,11 @@ export class FollowService {
             }
 
             database
-                .prepare('INSERT INTO Follow (followerId, followingId, createdAt, updatedAt) VALUES (?, ?, datetime("now"), datetime("now"))')
+                .prepare('INSERT INTO Follow (followerId, followingId, createdAt, updatedAt) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)')
                 .run(followerId, followingId);
+
+            // Notificatie voor follow
+            await NotificationService.createNotification(followingId, 'follow', followerId);
 
             return true;
         } finally {

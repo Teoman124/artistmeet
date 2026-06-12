@@ -114,6 +114,20 @@ const messageSeeds = [
     "You're killing it lately! 🔥"
 ];
 
+// Voorbeelden van specifieke notificaties voor Amelia (user 1)
+const specificNotifications = [
+    { userId: 1, type: 'like', actorId: 2, postId: 1, commentId: null, message: 'Bram liked your post "Studio Notes from Last Night"' },
+    { userId: 1, type: 'like', actorId: 3, postId: 2, commentId: null, message: 'Cora liked your post "New Vocal Demo"' },
+    { userId: 1, type: 'comment', actorId: 4, postId: 1, commentId: 1, message: 'Dylan commented on your post "Studio Notes from Last Night": "This is amazing! 🎵"' },
+    { userId: 1, type: 'comment', actorId: 5, postId: 3, commentId: 2, message: 'Elaine commented on your post "Rough Guitar Ideas": "Love the riffs!"' },
+    { userId: 1, type: 'save', actorId: 6, postId: 1, commentId: null, message: 'Finn saved your post "Studio Notes from Last Night"' },
+    { userId: 1, type: 'save', actorId: 7, postId: 4, commentId: null, message: 'Gaia saved your post "Ambient Loop Experiment"' },
+    { userId: 1, type: 'follow', actorId: 8, postId: null, commentId: null, message: 'Hugo started following you' },
+    { userId: 1, type: 'follow', actorId: 9, postId: null, commentId: null, message: 'Iris started following you' },
+    { userId: 1, type: 'message', actorId: 10, postId: null, commentId: null, message: 'Jasper sent you a message: "Hey! Love your music! 🎵"' },
+    { userId: 1, type: 'message', actorId: 11, postId: null, commentId: null, message: 'Kiki sent you a message: "Want to collaborate on a track? 🎸"' }
+];
+
 function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('base64url');
     const derivedKey = crypto.scryptSync(password, salt, 64).toString('base64url');
@@ -267,6 +281,26 @@ function ensureMessageTable() {
     `);
 }
 
+function ensureNotificationTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Notification (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            actorId INTEGER NOT NULL,
+            postId INTEGER,
+            commentId INTEGER,
+            isRead INTEGER DEFAULT 0,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME,
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (actorId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE,
+            FOREIGN KEY (commentId) REFERENCES Comment(id) ON DELETE CASCADE
+        );
+    `);
+}
+
 function resetUsers() {
     db.exec('DELETE FROM User;');
     db.exec("DELETE FROM sqlite_sequence WHERE name='User';");
@@ -297,6 +331,11 @@ function resetFollows() {
 function resetMessages() {
     db.exec('DELETE FROM Message;');
     db.exec("DELETE FROM sqlite_sequence WHERE name='Message';");
+}
+
+function resetNotifications() {
+    db.exec('DELETE FROM Notification;');
+    db.exec("DELETE FROM sqlite_sequence WHERE name='Notification';");
 }
 
 function seedProfiles() {
@@ -419,7 +458,6 @@ function seedMessages() {
     const insertMany = db.transaction(() => {
         for (let i = 0; i < users.length; i++) {
             const sender = users[i];
-            // Iedere gebruiker stuurt 2-5 berichten
             const numMessages = Math.floor(Math.random() * 4) + 2;
 
             for (let j = 0; j < numMessages; j++) {
@@ -431,6 +469,76 @@ function seedMessages() {
                 const randomMessage = messageSeeds[Math.floor(Math.random() * messageSeeds.length)];
                 const isRead = Math.random() > 0.3 ? 1 : 0;
                 insert.run(randomMessage, sender.id, receiver.id, isRead);
+            }
+        }
+    });
+
+    insertMany();
+}
+
+function seedNotifications() {
+    const posts = db.prepare('SELECT id, userId FROM Post ORDER BY id ASC').all();
+    const comments = db.prepare('SELECT id, userId, postId FROM Comment ORDER BY id ASC').all();
+
+    const insert = db.prepare('INSERT INTO Notification (userId, type, actorId, postId, commentId, isRead, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))');
+
+    const insertMany = db.transaction(() => {
+        // Specifieke voorbeelden voor Amelia (user 1)
+        if (specificNotifications.length > 0) {
+            for (const notif of specificNotifications) {
+                insert.run(notif.userId, notif.type, notif.actorId, notif.postId, notif.commentId, Math.random() > 0.3 ? 1 : 0);
+            }
+        }
+
+        // Seed likes notifications
+        const likes = db.prepare('SELECT userId, postId FROM PostLike LIMIT 100').all();
+        let likeCount = 0;
+        for (const like of likes) {
+            const post = posts.find(p => p.id === like.postId);
+            if (post && post.userId !== like.userId && likeCount < 30) {
+                insert.run(post.userId, 'like', like.userId, like.postId, null, Math.random() > 0.3 ? 1 : 0);
+                likeCount++;
+            }
+        }
+
+        // Seed comments notifications
+        let commentCount = 0;
+        for (const comment of comments) {
+            const post = posts.find(p => p.id === comment.postId);
+            if (post && post.userId !== comment.userId && commentCount < 25) {
+                insert.run(post.userId, 'comment', comment.userId, comment.postId, comment.id, Math.random() > 0.3 ? 1 : 0);
+                commentCount++;
+            }
+        }
+
+        // Seed saves notifications
+        const saves = db.prepare('SELECT userId, postId FROM SavedPost LIMIT 80').all();
+        let saveCount = 0;
+        for (const save of saves) {
+            const post = posts.find(p => p.id === save.postId);
+            if (post && post.userId !== save.userId && saveCount < 20) {
+                insert.run(post.userId, 'save', save.userId, save.postId, null, Math.random() > 0.3 ? 1 : 0);
+                saveCount++;
+            }
+        }
+
+        // Seed follows notifications
+        const follows = db.prepare('SELECT followerId, followingId FROM Follow LIMIT 100').all();
+        let followCount = 0;
+        for (const follow of follows) {
+            if (followCount < 25) {
+                insert.run(follow.followingId, 'follow', follow.followerId, null, null, Math.random() > 0.3 ? 1 : 0);
+                followCount++;
+            }
+        }
+
+        // Seed message notifications
+        const messages = db.prepare('SELECT senderId, receiverId FROM Message LIMIT 80').all();
+        let messageCount = 0;
+        for (const msg of messages) {
+            if (msg.senderId !== msg.receiverId && messageCount < 20) {
+                insert.run(msg.receiverId, 'message', msg.senderId, null, null, Math.random() > 0.3 ? 1 : 0);
+                messageCount++;
             }
         }
     });
@@ -464,6 +572,26 @@ function showSample() {
 
     const messages = db.prepare(`SELECT COUNT(*) as count FROM Message`).get();
     console.log('Seeded messages:', messages.count);
+
+    const notifications = db.prepare(`SELECT COUNT(*) as count FROM Notification`).get();
+    console.log('Seeded notifications:', notifications.count);
+
+    // Toon voorbeelden van notificaties voor Amelia
+    const ameliaNotifs = db.prepare(`
+        SELECT n.type, u.username as actor, 
+               CASE 
+                   WHEN n.type = 'like' THEN 'liked your post'
+                   WHEN n.type = 'comment' THEN 'commented on your post'
+                   WHEN n.type = 'save' THEN 'saved your post'
+                   WHEN n.type = 'follow' THEN 'started following you'
+                   WHEN n.type = 'message' THEN 'sent you a message'
+               END as action
+        FROM Notification n
+        JOIN User u ON u.id = n.actorId
+        WHERE n.userId = 1
+        LIMIT 10
+    `).all();
+    console.log('Example notifications for Amelia:', ameliaNotifs);
 }
 
 try {
@@ -474,18 +602,21 @@ try {
     ensureCommentTable();
     ensureFollowTable();
     ensureMessageTable();
+    ensureNotificationTable();
     resetPostRelations();
     resetComments();
     resetPosts();
     resetUsers();
     resetFollows();
     resetMessages();
+    resetNotifications();
     seedProfiles();
     seedPosts();
     seedPostRelations();
     seedComments();
     seedFollows();
     seedMessages();
+    seedNotifications();
     showSample();
     console.log('Seeding complete.');
     process.exitCode = 0;

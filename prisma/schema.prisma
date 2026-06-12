@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -20,7 +18,7 @@ model User {
   bio       String       @default("")
   avatar_url String?     
   role      String       @default("user")
-  messagesOpen Boolean   @default(true)  // Voeg deze toe!
+  messagesOpen Boolean   @default(true)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   posts     Post[]
@@ -31,6 +29,8 @@ model User {
   followers Follow[]     @relation("following")
   sentMessages Message[] @relation("sender")
   receivedMessages Message[] @relation("receiver")
+  receivedNotifications Notification[] @relation("user")  // Notificaties ontvangen
+  sentNotifications Notification[] @relation("actor")    // Notificaties gestuurd
 }
 
 model Post {
@@ -43,7 +43,8 @@ model Post {
   user        User     @relation(fields: [userId], references: [id])
   likes       PostLike[]
   savedPosts  SavedPost[]
-  comments    Comment[] // ⬅️ VOEG DIT TOE
+  comments    Comment[]
+  notifications Notification[]  // Notificaties voor deze post
 }
 
 model PostLike {
@@ -77,6 +78,7 @@ model Comment {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
+  notifications Notification[]  // Notificaties voor deze comment
 }
 
 model Follow {
@@ -108,5 +110,26 @@ model Message {
 
   @@index([senderId])
   @@index([receiverId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String   // 'like', 'comment', 'save', 'follow'
+  actorId   Int
+  postId    Int?
+  commentId Int?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation("user", fields: [userId], references: [id])
+  actor   User    @relation("actor", fields: [actorId], references: [id])
+  post    Post?   @relation(fields: [postId], references: [id])
+  comment Comment? @relation(fields: [commentId], references: [id])
+
+  @@index([userId])
+  @@index([userId, isRead])
   @@index([createdAt])
 }

@@ -1,4 +1,5 @@
 import { getDatabase } from '@/src/lib/db';
+import { NotificationService } from './notification.service';
 
 export type Message = {
     id: number;
@@ -41,6 +42,11 @@ export class MessageService {
             const result = database
                 .prepare('INSERT INTO Message (content, senderId, receiverId, isRead, createdAt, updatedAt) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)')
                 .run(content, senderId, receiverId);
+
+            // Notificatie voor nieuw bericht
+            if (senderId !== receiverId) {
+                await NotificationService.createNotification(receiverId, 'message', senderId);
+            }
 
             // Haal het verstuurde bericht op met gebruikersinformatie
             const message = database

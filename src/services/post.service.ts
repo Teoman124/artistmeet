@@ -1,5 +1,6 @@
 import { getDatabase } from '@/src/lib/db';
 import { PostFeedItem } from '@/src/types/post';
+import { NotificationService } from './notification.service';
 
 type PostRow = {
     id: number;
@@ -191,10 +192,16 @@ export class PostService {
             if (existingLike) {
                 database.prepare('DELETE FROM PostLike WHERE id = ?').run(existingLike.id);
                 return { liked: false };
-            }
+            } else {
+                database.prepare('INSERT INTO PostLike (userId, postId, createdAt) VALUES (?, ?, CURRENT_TIMESTAMP)').run(userId, postId);
 
-            database.prepare('INSERT INTO PostLike (userId, postId, createdAt) VALUES (?, ?, datetime(\'now\'))').run(userId, postId);
-            return { liked: true };
+                // Notificatie voor like
+                if (post.userId !== userId) {
+                    await NotificationService.createNotification(post.userId, 'like', userId, postId);
+                }
+
+                return { liked: true };
+            }
         } finally {
             database.close();
         }
@@ -223,10 +230,16 @@ export class PostService {
             if (existingSaved) {
                 database.prepare('DELETE FROM SavedPost WHERE id = ?').run(existingSaved.id);
                 return { saved: false };
-            }
+            } else {
+                database.prepare('INSERT INTO SavedPost (userId, postId, createdAt) VALUES (?, ?, CURRENT_TIMESTAMP)').run(userId, postId);
 
-            database.prepare('INSERT INTO SavedPost (userId, postId, createdAt) VALUES (?, ?, datetime(\'now\'))').run(userId, postId);
-            return { saved: true };
+                // Notificatie voor save
+                if (post.userId !== userId) {
+                    await NotificationService.createNotification(post.userId, 'save', userId, postId);
+                }
+
+                return { saved: true };
+            }
         } finally {
             database.close();
         }
