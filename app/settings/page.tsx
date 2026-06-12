@@ -24,6 +24,24 @@ export default async function SettingsPage() {
                 </p>
             </div>
 
+            <div>
+                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Profile</p>
+                // Placeholder for profile settings form
+                // you can update and edit your profile details
+            </div>
+
+            <div>
+                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Account</p>
+                // Placeholder for account settings form
+                // you can update and edit your account details
+            </div>
+
+            <div>
+                <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Privacy</p>
+                // Placeholder for privacy settings form
+                // you can update and edit your privacy settings
+            </div>
+
             <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-950">
                 <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Appearance</p>
                 <button

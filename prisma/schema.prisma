@@ -19,12 +19,15 @@ model User {
   password  String       // should be hashed (bcrypt)
   bio       String       @default("")
   avatar_url String?     
-  role      String       @default("user")  // ← Voeg role toe
+  role      String       @default("user")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   posts     Post[]
   likes     PostLike[]
   savedPosts SavedPost[]
+  comments  Comment[]    // ⬅️ VOEG DIT TOE
+  following Follow[]     @relation("follower")
+  followers Follow[]     @relation("following")
 }
 
 model Post {
@@ -33,10 +36,11 @@ model Post {
   description String
   userId      Int
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt  // ← Voeg updatedAt toe
+  updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id])
   likes       PostLike[]
   savedPosts  SavedPost[]
+  comments    Comment[] // ⬅️ VOEG DIT TOE
 }
 
 model PostLike {
@@ -60,6 +64,7 @@ model SavedPost {
 
   @@unique([userId, postId])
 }
+
 model Comment {
   id        Int      @id @default(autoincrement())
   content   String
@@ -69,4 +74,19 @@ model Comment {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int
+  followingId Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  follower User @relation("follower", fields: [followerId], references: [id])
+  following User @relation("following", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }
