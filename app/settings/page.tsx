@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/app/components/SimpleThemeProvider';
+import AvatarUpload from '@/app/components/AvatarUpload';
 
 export default function SettingsPage() {
     const router = useRouter();
     const { theme, setTheme } = useTheme();
     const [isLoading, setIsLoading] = useState(false);
+    const [isPasswordLoading, setIsPasswordLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(true);
 
     // User data state
@@ -16,6 +19,11 @@ export default function SettingsPage() {
         id: 0,
         username: '',
         email: '',
+        avatar_url: '',
+    });
+
+    // Password state
+    const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -43,12 +51,12 @@ export default function SettingsPage() {
                     return;
                 }
                 const data = await response.json();
-                setUserData(prev => ({
-                    ...prev,
+                setUserData({
                     id: data.id,
                     username: data.username,
                     email: data.email,
-                }));
+                    avatar_url: data.avatar_url,
+                });
             } catch (error) {
                 console.error('Failed to fetch user data:', error);
                 router.push('/login');
@@ -73,17 +81,11 @@ export default function SettingsPage() {
         return null;
     }
 
-    // Update profiel
+    // Update profiel (username, email)
     const handleProfileUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setMessage(null);
-
-        if (userData.newPassword && userData.newPassword !== userData.confirmPassword) {
-            setMessage({ type: 'error', text: 'New passwords do not match' });
-            setIsLoading(false);
-            return;
-        }
 
         try {
             const response = await fetch('/api/users/update', {
@@ -92,8 +94,6 @@ export default function SettingsPage() {
                 body: JSON.stringify({
                     username: userData.username,
                     email: userData.email,
-                    currentPassword: userData.currentPassword,
-                    newPassword: userData.newPassword || undefined,
                 }),
             });
 
@@ -101,7 +101,6 @@ export default function SettingsPage() {
 
             if (response.ok) {
                 setMessage({ type: 'success', text: 'Profile updated successfully!' });
-                setUserData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
                 router.refresh();
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to update profile' });
@@ -110,6 +109,48 @@ export default function SettingsPage() {
             setMessage({ type: 'error', text: 'Something went wrong' });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    // Update wachtwoord
+    const handlePasswordUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setPasswordMessage({ type: 'error', text: 'New passwords do not match' });
+            return;
+        }
+
+        if (passwordData.newPassword.length > 0 && passwordData.newPassword.length < 6) {
+            setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+            return;
+        }
+
+        setIsPasswordLoading(true);
+        setPasswordMessage(null);
+
+        try {
+            const response = await fetch('/api/users/update-password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword: passwordData.currentPassword,
+                    newPassword: passwordData.newPassword,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setPasswordMessage({ type: 'success', text: 'Password updated successfully!' });
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            } else {
+                setPasswordMessage({ type: 'error', text: data.error || 'Failed to update password' });
+            }
+        } catch (error) {
+            setPasswordMessage({ type: 'error', text: 'Something went wrong' });
+        } finally {
+            setIsPasswordLoading(false);
         }
     };
 
@@ -160,22 +201,28 @@ export default function SettingsPage() {
                 </p>
             </div>
 
-            {message && (
-                <div className={`rounded-2xl p-4 ${message.type === 'success'
-                    ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                    }`}>
-                    {message.text}
-                </div>
-            )}
-
-            {/* Profile Settings */}
+            {/* Profile Settings - Geen wachtwoord */}
             <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-950">
-                <h2 className="text-xl font-semibold text-neutral-950 dark:text-white mb-4">Profile settings</h2>
+                <h2 className="text-xl font-semibold text-neutral-950 dark:text-white mb-4">Profile information</h2>
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
-                    <div>
-                        // profile picture upload
+                    {/* Profile Picture Upload */}
+                    <div className="flex items-center gap-6">
+                        <AvatarUpload
+                            userId={userData.id}
+                            currentAvatarUrl={userData.avatar_url}
+                            username={userData.username}
+                        />
+                        <div>
+                            <p className="text-sm font-medium text-neutral-950 dark:text-white">Profile picture</p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                Click the camera icon to upload a new photo
+                            </p>
+                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                                Max 5MB. JPG, PNG or WEBP
+                            </p>
+                        </div>
                     </div>
+
                     <div>
                         <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                             Username
@@ -202,43 +249,12 @@ export default function SettingsPage() {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                            Current Password
-                        </label>
-                        <input
-                            type="password"
-                            value={userData.currentPassword}
-                            onChange={(e) => setUserData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                            className="w-full px-4 py-2 rounded-xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-neutral-500"
-                            placeholder="Required to change password"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                            New Password
-                        </label>
-                        <input
-                            type="password"
-                            value={userData.newPassword}
-                            onChange={(e) => setUserData(prev => ({ ...prev, newPassword: e.target.value }))}
-                            className="w-full px-4 py-2 rounded-xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-neutral-500"
-                            placeholder="Leave blank to keep current"
-                        />
-                    </div>
-
-                    {userData.newPassword && (
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                                Confirm New Password
-                            </label>
-                            <input
-                                type="password"
-                                value={userData.confirmPassword}
-                                onChange={(e) => setUserData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                className="w-full px-4 py-2 rounded-xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-neutral-500"
-                            />
+                    {message && (
+                        <div className={`rounded-xl p-3 text-sm ${message.type === 'success'
+                            ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                            }`}>
+                            {message.text}
                         </div>
                     )}
 
@@ -248,6 +264,70 @@ export default function SettingsPage() {
                         className="px-6 py-2 rounded-full bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200 disabled:opacity-50"
                     >
                         {isLoading ? 'Saving...' : 'Save changes'}
+                    </button>
+                </form>
+            </div>
+
+            {/* Password Settings - Apart */}
+            <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-neutral-950">
+                <h2 className="text-xl font-semibold text-neutral-950 dark:text-white mb-4">Change password</h2>
+                <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                            Current Password <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={passwordData.currentPassword}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-neutral-500"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                            New Password <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-neutral-500"
+                            required
+                            minLength={6}
+                        />
+                        <p className="text-xs text-neutral-500 mt-1">Minimum 6 characters</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                            Confirm New Password <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-white/10 focus:outline-none focus:ring-2 focus:ring-neutral-500"
+                            required
+                        />
+                    </div>
+
+                    {passwordMessage && (
+                        <div className={`rounded-xl p-3 text-sm ${passwordMessage.type === 'success'
+                            ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                            : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                            }`}>
+                            {passwordMessage.text}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={isPasswordLoading}
+                        className="px-6 py-2 rounded-full bg-neutral-950 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200 disabled:opacity-50"
+                    >
+                        {isPasswordLoading ? 'Updating...' : 'Update password'}
                     </button>
                 </form>
             </div>
