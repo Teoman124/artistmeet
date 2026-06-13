@@ -355,4 +355,53 @@ export class PostService {
             db.close();
         }
     }
+
+    static async getForYouFeed(userId: number): Promise<any[]> {
+        const db = getDatabase();
+        try {
+            const posts = db.prepare(`
+            SELECT DISTINCT p.id, p.title, p.description, p.createdAt, p.communityId,
+                   u.username, u.id as userId,
+                   c.name as communityName,
+                   GROUP_CONCAT(DISTINCT t.name) as tags,
+                   CASE WHEN pl.id IS NOT NULL THEN 1 ELSE 0 END as isLiked,
+                   CASE WHEN sp.id IS NOT NULL THEN 1 ELSE 0 END as isSaved,
+                   CASE WHEN p.userId = ? THEN 1 ELSE 0 END as isOwnPost
+            FROM Post p
+            JOIN User u ON u.id = p.userId
+            LEFT JOIN Community c ON c.id = p.communityId
+            LEFT JOIN PostTag pt ON pt.postId = p.id
+            LEFT JOIN Tag t ON t.id = pt.tagId
+            LEFT JOIN PostLike pl ON pl.postId = p.id AND pl.userId = ?
+            LEFT JOIN SavedPost sp ON sp.postId = p.id AND sp.userId = ?
+            WHERE (
+                -- Posts van mensen die ik volg
+                p.userId IN (SELECT followingId FROM Follow WHERE followerId = ?)
+                OR
+                -- Posts uit communities waar ik lid van ben
+                p.communityId IN (SELECT communityId FROM CommunityMember WHERE userId = ?)
+            )
+            GROUP BY p.id
+            ORDER BY p.createdAt DESC
+            LIMIT 50
+        `).all(userId, userId, userId, userId, userId) as any[];
+
+            return posts.map(p => ({
+                id: p.id,
+                title: p.title,
+                description: p.description,
+                username: p.username,
+                userId: p.userId,
+                createdAt: new Date(p.createdAt),
+                communityId: p.communityId,
+                communityName: p.communityName,
+                tags: p.tags ? p.tags.split(',') : [],
+                isLiked: p.isLiked === 1,
+                isSaved: p.isSaved === 1,
+                isOwnPost: p.isOwnPost === 1
+            }));
+        } finally {
+            db.close();
+        }
+    }
 }

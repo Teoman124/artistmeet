@@ -18,15 +18,25 @@ type UserCommunity = {
     role: string;
 };
 
+type SuggestedUser = {
+    id: number;
+    username: string;
+    avatar_url: string | null;
+    bio: string;
+};
+
 export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayoutProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showResults, setShowResults] = useState(false);
     const [myCommunities, setMyCommunities] = useState<UserCommunity[]>([]);
     const [loadingCommunities, setLoadingCommunities] = useState(true);
+    const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(true);
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
 
+    // Fetch user's communities
     useEffect(() => {
         const fetchCommunities = async () => {
             try {
@@ -42,6 +52,24 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
             }
         };
         fetchCommunities();
+    }, []);
+
+    // Fetch suggested users
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            try {
+                const response = await fetch('/api/suggestions/users');
+                if (response.ok) {
+                    const data = await response.json();
+                    setSuggestedUsers(data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch suggestions:', error);
+            } finally {
+                setLoadingSuggestions(false);
+            }
+        };
+        fetchSuggestions();
     }, []);
 
     useEffect(() => {
@@ -74,18 +102,34 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
 
     const navItems = [
         { href: '/', label: 'Home', icon: '🏠' },
+        { href: '/for-you', label: 'For You', icon: '✨' },
         { href: '/explore', label: 'Explore', icon: '🔍' },
         { href: '/community', label: 'Community', icon: '👥' },
     ];
 
-    const suggestedUsers = [
-        { username: 'amelia', bio: 'Ambient producer', avatar: '🎵', href: '/profile/amelia' },
-        { username: 'bram', bio: 'Guitarist', avatar: '🎸', href: '/profile/bram' },
-        { username: 'cora', bio: 'Songwriter', avatar: '🎤', href: '/profile/cora' },
-        { username: 'dylan', bio: 'Sound designer', avatar: '🎛️', href: '/profile/dylan' },
-    ];
-
     const topOffset = scrolled ? 56 : 72;
+
+    // Follow a user
+    const handleFollow = async (username: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+            const response = await fetch('/api/users/follow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username }),
+            });
+
+            if (response.ok) {
+                // Remove followed user from suggestions
+                setSuggestedUsers(prev => prev.filter(u => u.username !== username));
+                router.refresh();
+            }
+        } catch (error) {
+            console.error('Failed to follow:', error);
+        }
+    };
 
     return (
         <>
@@ -166,6 +210,7 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                     }}
                 >
                     <div className="space-y-4 pl-2">
+                        {/* Search Bar */}
                         <div className="relative">
                             <input
                                 type="text"
@@ -195,6 +240,7 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             )}
                         </div>
 
+                        {/* Search Results */}
                         {showResults && searchResults.length > 0 && (
                             <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
                                 <div className="flex items-center justify-between mb-3">
@@ -225,43 +271,66 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             </div>
                         )}
 
+                        {/* Popular Tags */}
                         <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
                             <h3 className="text-sm font-semibold mb-3 text-neutral-950 dark:text-white">Popular Tags</h3>
                             <TagCloud />
                         </div>
 
+                        {/* Suggested for you - Dynamisch */}
                         <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
                             <h3 className="text-sm font-semibold mb-3 text-neutral-950 dark:text-white">Suggested for you</h3>
                             <div className="space-y-3">
-                                {suggestedUsers.map((user) => (
-                                    <Link
-                                        key={user.username}
-                                        href={user.href}
-                                        className="flex items-center gap-3 group hover:bg-neutral-50 dark:hover:bg-white/5 rounded-lg p-2 transition cursor-pointer"
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-lg">
-                                            {user.avatar}
+                                {loadingSuggestions ? (
+                                    // Loading skeletons
+                                    Array(3).fill(0).map((_, i) => (
+                                        <div key={i} className="flex items-center gap-3 animate-pulse">
+                                            <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700"></div>
+                                            <div className="flex-1">
+                                                <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded"></div>
+                                                <div className="h-3 w-16 bg-neutral-200 dark:bg-neutral-700 rounded mt-1"></div>
+                                            </div>
+                                            <div className="w-14 h-7 bg-neutral-200 dark:bg-neutral-700 rounded-full"></div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium text-neutral-950 dark:text-white group-hover:underline">
-                                                {user.username}
-                                            </p>
-                                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                                                {user.bio}
-                                            </p>
-                                        </div>
-                                        <button
-                                            className="text-xs px-3 py-1 rounded-full bg-neutral-950 text-white dark:bg-white dark:text-neutral-950 hover:opacity-80 transition"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                console.log(`Follow ${user.username}`);
-                                            }}
+                                    ))
+                                ) : suggestedUsers.length > 0 ? (
+                                    suggestedUsers.map((user) => (
+                                        <Link
+                                            key={user.id}
+                                            href={`/profile/${user.username}`}
+                                            className="flex items-center gap-3 group hover:bg-neutral-50 dark:hover:bg-white/5 rounded-lg p-2 transition cursor-pointer"
                                         >
-                                            Follow
-                                        </button>
-                                    </Link>
-                                ))}
+                                            <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden flex-shrink-0">
+                                                <img
+                                                    src={user.avatar_url || '/zapppppaaaaa.jpg'}
+                                                    alt={user.username}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = '/zapppppaaaaa.jpg';
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-neutral-950 dark:text-white group-hover:underline truncate">
+                                                    {user.username}
+                                                </p>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                                                    {user.bio || 'No bio yet'}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={(e) => handleFollow(user.username, e)}
+                                                className="text-xs px-3 py-1 rounded-full bg-neutral-950 text-white dark:bg-white dark:text-neutral-950 hover:opacity-80 transition flex-shrink-0"
+                                            >
+                                                Follow
+                                            </button>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center py-4">
+                                        No suggestions available
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
