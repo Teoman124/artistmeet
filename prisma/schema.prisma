@@ -44,7 +44,7 @@ model Post {
   likes       PostLike[]
   savedPosts  SavedPost[]
   comments    Comment[]
-  notifications Notification[]  // Notificaties voor deze post
+  tags        PostTag[]  // Voeg deze relatie toe
 }
 
 model PostLike {
@@ -132,4 +132,24 @@ model Notification {
   @@index([userId])
   @@index([userId, isRead])
   @@index([createdAt])
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique  // bijv. "metal", "lookingformembers", "music"
+  createdAt DateTime @default(now())
+  
+  posts PostTag[]
+}
+
+model PostTag {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  tagId     Int
+  createdAt DateTime @default(now())
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: CASCADE)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: CASCADE)
+  
+  @@unique([postId, tagId])
 }

@@ -30,6 +30,69 @@ const userProfiles = [
     { username: 'timo', bio: 'Atmospheric instrumental drafts and wide soundscapes.' }
 ];
 
+// Tags database met vooraf gedefinieerde tags
+const tagDatabase = [
+    { name: 'music', description: 'General music discussions' },
+    { name: 'metal', description: 'Heavy metal and rock' },
+    { name: 'lookingformembers', description: 'Looking for band members' },
+    { name: 'ambient', description: 'Ambient and atmospheric music' },
+    { name: 'guitar', description: 'Guitar techniques and riffs' },
+    { name: 'bass', description: 'Bass guitar discussions' },
+    { name: 'drums', description: 'Drum patterns and beats' },
+    { name: 'vocal', description: 'Singing and vocals' },
+    { name: 'production', description: 'Music production tips' },
+    { name: 'collab', description: 'Looking for collaborations' },
+    { name: 'synth', description: 'Synthesizers and sound design' },
+    { name: 'electronic', description: 'Electronic music' },
+    { name: 'hiphop', description: 'Hip hop and beats' },
+    { name: 'jazz', description: 'Jazz improvisation' },
+    { name: 'classical', description: 'Classical music' },
+    { name: 'folk', description: 'Folk and acoustic' },
+    { name: 'punk', description: 'Punk rock' },
+    { name: 'indie', description: 'Indie music' },
+    { name: 'pop', description: 'Pop music' },
+    { name: 'rnb', description: 'R&B and soul' },
+    { name: 'technique', description: 'Playing techniques' },
+    { name: 'gear', description: 'Gear and equipment' },
+    { name: 'tutorial', description: 'Tutorials and lessons' },
+    { name: 'feedback', description: 'Feedback wanted' },
+    { name: 'newrelease', description: 'New releases' }
+];
+
+// Tags per post (postId -> array van tag namen)
+const postTags = {
+    1: ['music', 'production', 'studio'],
+    2: ['music', 'vocal', 'demo'],
+    3: ['music', 'guitar', 'metal'],
+    4: ['music', 'ambient', 'synth'],
+    5: ['music', 'drums', 'percussion'],
+    6: ['music', 'bass', 'groove'],
+    7: ['music', 'live', 'performance'],
+    8: ['music', 'songwriting', 'lyrics'],
+    9: ['music', 'mixing', 'production'],
+    10: ['music', 'beat', 'electronic'],
+    11: ['music', 'rehearsal', 'recording'],
+    12: ['music', 'melody', 'technique'],
+    13: ['music', 'production', 'feedback'],
+    14: ['music', 'chorus', 'songwriting'],
+    15: ['music', 'demo', 'warmup'],
+    16: ['music', 'garage', 'raw'],
+    17: ['music', 'sounddesign', 'synth'],
+    18: ['music', 'arrangement', 'structure'],
+    19: ['music', 'draft', 'fresh'],
+    20: ['music', 'instrumental', 'atmospheric'],
+    21: ['music', 'behindthescenes', 'studio'],
+    22: ['music', 'gear', 'plugins'],
+    23: ['music', 'live', 'tips'],
+    24: ['music', 'mixing', 'tutorial'],
+    25: ['music', 'collab', 'story'],
+    26: ['music', 'sampling', 'sounddesign'],
+    27: ['music', 'remix', 'contest'],
+    28: ['music', 'studio', 'tour'],
+    29: ['music', 'production', 'mistakes'],
+    30: ['music', 'creative', 'block']
+};
+
 const postSeeds = [
     { title: 'Studio Notes from Last Night', description: 'A quick recap of the drum takes, synth layers, and the parts that finally clicked.' },
     { title: 'New Vocal Demo', description: 'Trying a warmer vocal take with a softer arrangement and more room in the mix.' },
@@ -114,7 +177,6 @@ const messageSeeds = [
     "You're killing it lately! 🔥"
 ];
 
-// Voorbeelden van specifieke notificaties voor Amelia (user 1)
 const specificNotifications = [
     { userId: 1, type: 'like', actorId: 2, postId: 1, commentId: null, message: 'Bram liked your post "Studio Notes from Last Night"' },
     { userId: 1, type: 'like', actorId: 3, postId: 2, commentId: null, message: 'Cora liked your post "New Vocal Demo"' },
@@ -301,6 +363,62 @@ function ensureNotificationTable() {
     `);
 }
 
+// Nieuwe functies voor Tags
+function ensureTagTables() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Tag (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS PostTag (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            postId INTEGER NOT NULL,
+            tagId INTEGER NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (postId) REFERENCES Post(id) ON DELETE CASCADE,
+            FOREIGN KEY (tagId) REFERENCES Tag(id) ON DELETE CASCADE,
+            UNIQUE(postId, tagId)
+        );
+    `);
+}
+
+function resetTags() {
+    db.exec('DELETE FROM PostTag;');
+    db.exec('DELETE FROM Tag;');
+    db.exec("DELETE FROM sqlite_sequence WHERE name='PostTag';");
+    db.exec("DELETE FROM sqlite_sequence WHERE name='Tag';");
+}
+
+function seedTags() {
+    // Tags toevoegen aan Tag tabel
+    const insertTag = db.prepare('INSERT OR IGNORE INTO Tag (name, createdAt) VALUES (?, CURRENT_TIMESTAMP)');
+    for (const tag of tagDatabase) {
+        insertTag.run(tag.name);
+    }
+
+    // Haal tag IDs op
+    const tags = db.prepare('SELECT id, name FROM Tag').all();
+    const tagMap = {};
+    for (const tag of tags) {
+        tagMap[tag.name] = tag.id;
+    }
+
+    // Tags koppelen aan posts
+    const insertPostTag = db.prepare('INSERT OR IGNORE INTO PostTag (postId, tagId, createdAt) VALUES (?, ?, CURRENT_TIMESTAMP)');
+
+    for (const [postId, tagNames] of Object.entries(postTags)) {
+        for (const tagName of tagNames) {
+            if (tagMap[tagName]) {
+                insertPostTag.run(parseInt(postId), tagMap[tagName]);
+            }
+        }
+    }
+
+    console.log(`Seeded tags: ${Object.keys(tagMap).length} tags, ${Object.keys(postTags).length} post-tag relations`);
+}
+
 function resetUsers() {
     db.exec('DELETE FROM User;');
     db.exec("DELETE FROM sqlite_sequence WHERE name='User';");
@@ -483,14 +601,12 @@ function seedNotifications() {
     const insert = db.prepare('INSERT INTO Notification (userId, type, actorId, postId, commentId, isRead, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))');
 
     const insertMany = db.transaction(() => {
-        // Specifieke voorbeelden voor Amelia (user 1)
         if (specificNotifications.length > 0) {
             for (const notif of specificNotifications) {
                 insert.run(notif.userId, notif.type, notif.actorId, notif.postId, notif.commentId, Math.random() > 0.3 ? 1 : 0);
             }
         }
 
-        // Seed likes notifications
         const likes = db.prepare('SELECT userId, postId FROM PostLike LIMIT 100').all();
         let likeCount = 0;
         for (const like of likes) {
@@ -501,7 +617,6 @@ function seedNotifications() {
             }
         }
 
-        // Seed comments notifications
         let commentCount = 0;
         for (const comment of comments) {
             const post = posts.find(p => p.id === comment.postId);
@@ -511,7 +626,6 @@ function seedNotifications() {
             }
         }
 
-        // Seed saves notifications
         const saves = db.prepare('SELECT userId, postId FROM SavedPost LIMIT 80').all();
         let saveCount = 0;
         for (const save of saves) {
@@ -522,7 +636,6 @@ function seedNotifications() {
             }
         }
 
-        // Seed follows notifications
         const follows = db.prepare('SELECT followerId, followingId FROM Follow LIMIT 100').all();
         let followCount = 0;
         for (const follow of follows) {
@@ -532,7 +645,6 @@ function seedNotifications() {
             }
         }
 
-        // Seed message notifications
         const messages = db.prepare('SELECT senderId, receiverId FROM Message LIMIT 80').all();
         let messageCount = 0;
         for (const msg of messages) {
@@ -576,7 +688,12 @@ function showSample() {
     const notifications = db.prepare(`SELECT COUNT(*) as count FROM Notification`).get();
     console.log('Seeded notifications:', notifications.count);
 
-    // Toon voorbeelden van notificaties voor Amelia
+    const tags = db.prepare(`SELECT COUNT(*) as count FROM Tag`).get();
+    console.log('Seeded tags:', tags.count);
+
+    const postTags = db.prepare(`SELECT COUNT(*) as count FROM PostTag`).get();
+    console.log('Seeded post-tag relations:', postTags.count);
+
     const ameliaNotifs = db.prepare(`
         SELECT n.type, u.username as actor, 
                CASE 
@@ -603,6 +720,7 @@ try {
     ensureFollowTable();
     ensureMessageTable();
     ensureNotificationTable();
+    ensureTagTables();
     resetPostRelations();
     resetComments();
     resetPosts();
@@ -610,12 +728,14 @@ try {
     resetFollows();
     resetMessages();
     resetNotifications();
+    resetTags();
     seedProfiles();
     seedPosts();
     seedPostRelations();
     seedComments();
     seedFollows();
     seedMessages();
+    seedTags();
     seedNotifications();
     showSample();
     console.log('Seeding complete.');

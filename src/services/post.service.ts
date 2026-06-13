@@ -1,6 +1,7 @@
 import { getDatabase } from '@/src/lib/db';
 import { PostFeedItem } from '@/src/types/post';
 import { NotificationService } from './notification.service';
+import { TagService } from './tag.service';
 
 type PostRow = {
     id: number;
@@ -240,6 +241,64 @@ export class PostService {
 
                 return { saved: true };
             }
+        } finally {
+            database.close();
+        }
+    }
+    static async createPost(userId: number, title: string, description: string): Promise<any> {
+        const database = getDatabase();
+
+        try {
+            const result = database
+                .prepare('INSERT INTO Post (title, description, userId, createdAt, updatedAt) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)')
+                .run(title, description, userId);
+
+            const postId = result.lastInsertRowid as number;
+
+            // Tags extraheren en toevoegen
+            const tags = TagService.extractTags(`${title} ${description}`);
+            if (tags.length > 0) {
+                await TagService.addTagsToPost(postId, tags);
+            }
+
+            return { id: postId, title, description, userId };
+        } finally {
+            database.close();
+        }
+    }
+
+    static async getFeedPostsWithTags(userId?: number): Promise<any[]> {
+        const database = getDatabase();
+
+        try {
+            const posts = database
+                .prepare(`
+                SELECT p.id, p.title, p.description, p.createdAt, u.username, u.id as userId,
+                       GROUP_CONCAT(DISTINCT t.name) as tags,
+                       CASE WHEN ? IS NOT NULL AND pl.id IS NOT NULL THEN 1 ELSE 0 END as isLiked,
+                       CASE WHEN ? IS NOT NULL AND sp.id IS NOT NULL THEN 1 ELSE 0 END as isSaved
+                FROM Post p
+                JOIN User u ON u.id = p.userId
+                LEFT JOIN PostTag pt ON pt.postId = p.id
+                LEFT JOIN Tag t ON t.id = pt.tagId
+                LEFT JOIN PostLike pl ON pl.postId = p.id AND pl.userId = ?
+                LEFT JOIN SavedPost sp ON sp.postId = p.id AND sp.userId = ?
+                GROUP BY p.id
+                ORDER BY p.createdAt DESC
+            `)
+                .all(userId || null, userId || null, userId || null, userId || null) as any[];
+
+            return posts.map(p => ({
+                id: p.id,
+                title: p.title,
+                description: p.description,
+                username: p.username,
+                userId: p.userId,
+                createdAt: new Date(p.createdAt),
+                tags: p.tags ? p.tags.split(',') : [],
+                isLiked: p.isLiked === 1,
+                isSaved: p.isSaved === 1
+            }));
         } finally {
             database.close();
         }

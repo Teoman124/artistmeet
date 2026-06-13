@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type PostCardActionsProps = {
     postId: number;
-    isLiked?: boolean;
-    isSaved?: boolean;
-    isOwnPost?: boolean;
+    isLiked: boolean;
+    isSaved: boolean;
+    isOwnPost: boolean;
     canInteract: boolean;
+    tags?: string[];
 };
 
 async function sendToggleRequest(url: string) {
@@ -27,20 +29,52 @@ async function sendToggleRequest(url: string) {
     return response.json() as Promise<{ liked?: boolean; saved?: boolean }>;
 }
 
-export function PostCardActions({ postId, isLiked, isSaved, isOwnPost, canInteract }: PostCardActionsProps) {
+export function PostCardActions({ postId, isLiked, isSaved, isOwnPost, canInteract, tags = [] }: PostCardActionsProps) {
     const router = useRouter();
     const [error, setError] = useState('');
     const [isPending, startTransition] = useTransition();
 
     if (isOwnPost) {
-        return <span className="text-xs font-medium uppercase tracking-[0.25em] text-neutral-400">Your post</span>;
+        return (
+            <div className="space-y-2">
+                {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                        {tags.map(tag => (
+                            <Link
+                                key={tag}
+                                href={`/tags/${tag}`}
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                                #{tag}
+                            </Link>
+                        ))}
+                    </div>
+                )}
+                <span className="text-xs font-medium uppercase tracking-[0.25em] text-neutral-400">Your post</span>
+            </div>
+        );
     }
 
     if (!canInteract) {
         return (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Log in to like or save posts.
-            </p>
+            <div className="space-y-2">
+                {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                        {tags.map(tag => (
+                            <Link
+                                key={tag}
+                                href={`/tags/${tag}`}
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                                #{tag}
+                            </Link>
+                        ))}
+                    </div>
+                )}
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    Log in to like or save posts.
+                </p>
+            </div>
         );
     }
 
@@ -60,6 +94,19 @@ export function PostCardActions({ postId, isLiked, isSaved, isOwnPost, canIntera
 
     return (
         <div className="space-y-3">
+            {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                    {tags.map(tag => (
+                        <Link
+                            key={tag}
+                            href={`/tags/${tag}`}
+                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                            #{tag}
+                        </Link>
+                    ))}
+                </div>
+            )}
             <div className="flex flex-wrap gap-2">
                 <button
                     type="button"
