@@ -23,10 +23,10 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
     const [showResults, setShowResults] = useState(false);
     const [myCommunities, setMyCommunities] = useState<UserCommunity[]>([]);
     const [loadingCommunities, setLoadingCommunities] = useState(true);
+    const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
 
-    // Fetch user's communities
     useEffect(() => {
         const fetchCommunities = async () => {
             try {
@@ -42,6 +42,14 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
             }
         };
         fetchCommunities();
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 10);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +78,6 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
         { href: '/community', label: 'Community', icon: '👥' },
     ];
 
-    // Suggested users - klikbaar naar profiel
     const suggestedUsers = [
         { username: 'amelia', bio: 'Ambient producer', avatar: '🎵', href: '/profile/amelia' },
         { username: 'bram', bio: 'Guitarist', avatar: '🎸', href: '/profile/bram' },
@@ -78,12 +85,22 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
         { username: 'dylan', bio: 'Sound designer', avatar: '🎛️', href: '/profile/dylan' },
     ];
 
+    const topOffset = scrolled ? 56 : 72;
+
     return (
         <>
-            <div className="flex gap-6 max-w-7xl mx-auto px-4 py-6">
-                {/* Linker zijbalk - 1/4 breedte (25%) */}
-                <aside className="w-1/4 flex-shrink-0">
-                    <div className="sticky top-20 space-y-2">
+            <div className="flex gap-6 max-w-7xl mx-auto">
+                {/* Linker zijbalk */}
+                <aside
+                    className="w-1/4 flex-shrink-0"
+                    style={{
+                        position: 'sticky',
+                        top: topOffset,
+                        height: `calc(100vh - ${topOffset + 24}px)`,
+                        overflowY: 'auto'
+                    }}
+                >
+                    <div className="space-y-6 pr-2">
                         <nav className="flex flex-col gap-1">
                             {navItems.map((item) => (
                                 <Link
@@ -100,10 +117,9 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             ))}
                         </nav>
 
-                        {/* My Communities Dropdown */}
                         {!loadingCommunities && myCommunities.length > 0 && (
-                            <div className="mt-6">
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
+                            <div>
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
                                     My Communities
                                 </h3>
                                 <div className="space-y-1">
@@ -120,27 +136,36 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                                         </Link>
                                     ))}
                                 </div>
-                                <Link href="/explore" className="block mt-2 text-xs text-neutral-500 hover:underline">
+                                <Link href="/explore" className="block mt-3 text-xs text-neutral-500 hover:underline">
                                     + Discover more
                                 </Link>
                             </div>
                         )}
 
                         {loadingCommunities && (
-                            <div className="mt-6 h-16 animate-pulse bg-neutral-200 dark:bg-neutral-700 rounded-xl"></div>
+                            <div className="h-16 animate-pulse bg-neutral-200 dark:bg-neutral-700 rounded-xl"></div>
                         )}
                     </div>
                 </aside>
 
-                {/* Midden - Posts Feed - 1/2 breedte (50%) */}
+                {/* Midden - Posts Feed */}
                 <main className="w-1/2 min-w-0">
-                    {children}
+                    <div className="space-y-4">
+                        {children}
+                    </div>
                 </main>
 
-                {/* Rechter zijbalk - Search - 1/4 breedte (25%) */}
-                <aside className="w-1/4 flex-shrink-0">
-                    <div className="sticky top-20 space-y-4">
-                        {/* Search Bar met clear button */}
+                {/* Rechter zijbalk */}
+                <aside
+                    className="w-1/4 flex-shrink-0"
+                    style={{
+                        position: 'sticky',
+                        top: topOffset,
+                        height: `calc(100vh - ${topOffset + 24}px)`,
+                        overflowY: 'auto'
+                    }}
+                >
+                    <div className="space-y-4 pl-2">
                         <div className="relative">
                             <input
                                 type="text"
@@ -170,7 +195,6 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             )}
                         </div>
 
-                        {/* Search Results */}
                         {showResults && searchResults.length > 0 && (
                             <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
                                 <div className="flex items-center justify-between mb-3">
@@ -201,13 +225,11 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             </div>
                         )}
 
-                        {/* Popular Tags */}
                         <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
                             <h3 className="text-sm font-semibold mb-3 text-neutral-950 dark:text-white">Popular Tags</h3>
                             <TagCloud />
                         </div>
 
-                        {/* Suggested for you - klikbaar naar profiel */}
                         <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
                             <h3 className="text-sm font-semibold mb-3 text-neutral-950 dark:text-white">Suggested for you</h3>
                             <div className="space-y-3">
@@ -246,7 +268,6 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                 </aside>
             </div>
 
-            {/* Floating Create Button - buiten de flex container */}
             <FloatingCreateButton />
         </>
     );
