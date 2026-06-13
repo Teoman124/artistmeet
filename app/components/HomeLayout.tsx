@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { TagCloud } from './TagCloud';
@@ -11,11 +11,37 @@ type HomeLayoutProps = {
     onSearch?: (query: string) => void;
 };
 
+type UserCommunity = {
+    id: number;
+    name: string;
+    role: string;
+};
+
 export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayoutProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showResults, setShowResults] = useState(false);
+    const [myCommunities, setMyCommunities] = useState<UserCommunity[]>([]);
+    const [loadingCommunities, setLoadingCommunities] = useState(true);
     const pathname = usePathname();
     const router = useRouter();
+
+    // Fetch user's communities
+    useEffect(() => {
+        const fetchCommunities = async () => {
+            try {
+                const response = await fetch('/api/communities/mine');
+                if (response.ok) {
+                    const data = await response.json();
+                    setMyCommunities(data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch communities:', error);
+            } finally {
+                setLoadingCommunities(false);
+            }
+        };
+        fetchCommunities();
+    }, []);
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -71,6 +97,36 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             </Link>
                         ))}
                     </nav>
+
+                    {/* My Communities Dropdown - NIEUW! */}
+                    {!loadingCommunities && myCommunities.length > 0 && (
+                        <div className="mt-6">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
+                                My Communities
+                            </h3>
+                            <div className="space-y-1">
+                                {myCommunities.map((comm) => (
+                                    <Link
+                                        key={comm.id}
+                                        href={`/communities/${comm.name}`}  // ← Dit is de juiste link
+                                        className="block px-3 py-2 rounded-lg text-sm hover:bg-neutral-100 dark:hover:bg-white/10 transition"
+                                    >
+                                        {comm.name}
+                                        {comm.role === 'mod' && (
+                                            <span className="ml-2 text-xs text-yellow-600 dark:text-yellow-400">(mod)</span>
+                                        )}
+                                    </Link>
+                                ))}
+                            </div>
+                            <Link href="/explore" className="block mt-2 text-xs text-neutral-500 hover:underline">
+                                + Discover more
+                            </Link>
+                        </div>
+                    )}
+
+                    {loadingCommunities && (
+                        <div className="mt-6 h-16 animate-pulse bg-neutral-200 dark:bg-neutral-700 rounded-xl"></div>
+                    )}
                 </div>
             </aside>
 
@@ -175,7 +231,6 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            // Follow logic kan later worden toegevoegd
                                             console.log(`Follow ${user.username}`);
                                         }}
                                     >

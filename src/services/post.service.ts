@@ -303,4 +303,41 @@ export class PostService {
             database.close();
         }
     }
+
+    static async getPostsByCommunityId(communityId: number, userId?: number): Promise<any[]> {
+        const db = getDatabase();
+        try {
+            const posts = db.prepare(`
+            SELECT p.*, u.username,
+                CASE WHEN ? IS NOT NULL AND pl.id IS NOT NULL THEN 1 ELSE 0 END as isLiked,
+                CASE WHEN ? IS NOT NULL AND sp.id IS NOT NULL THEN 1 ELSE 0 END as isSaved,
+                CASE WHEN p.userId = ? THEN 1 ELSE 0 END as isOwnPost,
+                GROUP_CONCAT(DISTINCT t.name) as tags
+            FROM Post p
+            JOIN User u ON u.id = p.userId
+            LEFT JOIN PostLike pl ON pl.postId = p.id AND pl.userId = ?
+            LEFT JOIN SavedPost sp ON sp.postId = p.id AND sp.userId = ?
+            LEFT JOIN PostTag pt ON pt.postId = p.id
+            LEFT JOIN Tag t ON t.id = pt.tagId
+            WHERE p.communityId = ?
+            GROUP BY p.id
+            ORDER BY p.createdAt DESC
+        `).all(userId || null, userId || null, userId || null, userId || null, userId || null, communityId) as any[];
+
+            return posts.map((p: any) => ({
+                id: p.id,
+                title: p.title,
+                description: p.description,
+                username: p.username,
+                userId: p.userId,
+                createdAt: new Date(p.createdAt),
+                isLiked: p.isLiked === 1,
+                isSaved: p.isSaved === 1,
+                isOwnPost: p.isOwnPost === 1,
+                tags: p.tags ? p.tags.split(',') : []
+            }));
+        } finally {
+            db.close();
+        }
+    }
 }
