@@ -107,7 +107,8 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
         { href: '/community', label: 'Community', icon: '👥' },
     ];
 
-    const topOffset = scrolled ? 56 : 72;
+    // Aangepaste top offset voor betere spacing
+    const topOffset = scrolled ? 60 : 80;
 
     // Follow a user
     const handleFollow = async (username: string, e: React.MouseEvent) => {
@@ -122,7 +123,6 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
             });
 
             if (response.ok) {
-                // Remove followed user from suggestions
                 setSuggestedUsers(prev => prev.filter(u => u.username !== username));
                 router.refresh();
             }
@@ -140,7 +140,7 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                     style={{
                         position: 'sticky',
                         top: topOffset,
-                        height: `calc(100vh - ${topOffset + 24}px)`,
+                        height: `calc(100vh - ${topOffset + 20}px)`,
                         overflowY: 'auto'
                     }}
                 >
@@ -205,7 +205,7 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                     style={{
                         position: 'sticky',
                         top: topOffset,
-                        height: `calc(100vh - ${topOffset + 24}px)`,
+                        height: `calc(100vh - ${topOffset + 20}px)`,
                         overflowY: 'auto'
                     }}
                 >
@@ -282,7 +282,6 @@ export function HomeLayout({ children, searchResults = [], onSearch }: HomeLayou
                             <h3 className="text-sm font-semibold mb-3 text-neutral-950 dark:text-white">Suggested for you</h3>
                             <div className="space-y-3">
                                 {loadingSuggestions ? (
-                                    // Loading skeletons
                                     Array(3).fill(0).map((_, i) => (
                                         <div key={i} className="flex items-center gap-3 animate-pulse">
                                             <div className="w-10 h-10 rounded-full bg-neutral-200 dark:bg-neutral-700"></div>

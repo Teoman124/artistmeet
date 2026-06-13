@@ -53,12 +53,13 @@ export default async function RootLayout({
         <SimpleThemeProvider>
           <Header username={username} avatarUrl={userAvatarUrl} session={!!session} />
 
-          <main className="flex-1 pt-6">
+          {/* Meer ruimte tussen header en content */}
+          <main className="flex-1 pt-8">
             <div className="mx-auto max-w-7xl px-4">{children}</div>
           </main>
 
-          <footer className="w-full border-t border-gray-200 dark:border-gray-800 mt-12">
-            <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <footer className="w-full border-t border-gray-200 dark:border-gray-800 mt-16">
+            <div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-gray-600 dark:text-gray-400">
               © {new Date().getFullYear()} ArtistMeet, All rights reserved.
             </div>
           </footer>
