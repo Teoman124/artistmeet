@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CreatePostModal } from './CreatePostModal.tsx';
+import { CreatePostModal } from './CreatePostModal';  // Verwijder .tsx
 
 export function FloatingCreateButton() {
     const [isModalOpen, setIsModalOpen] = useState(false);
