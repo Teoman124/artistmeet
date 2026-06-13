@@ -709,6 +709,149 @@ function showSample() {
         LIMIT 10
     `).all();
     console.log('Example notifications for Amelia:', ameliaNotifs);
+
+    const communities = db.prepare(`SELECT COUNT(*) as count FROM Community`).get();
+    const warnings = db.prepare(`SELECT COUNT(*) as count FROM Warning`).get();
+    const reports = db.prepare(`SELECT COUNT(*) as count FROM Report`).get();
+    console.log('Seeded communities:', communities.count);
+    console.log('Seeded warnings:', warnings.count);
+    console.log('Seeded reports:', reports.count);
+}
+
+function ensureCommunityTables() {
+    // Alleen aanmaken als ze nog niet bestaan
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Community (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            description TEXT NOT NULL DEFAULT '',
+            ownerId INTEGER NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updatedAt DATETIME,
+            FOREIGN KEY (ownerId) REFERENCES User(id) ON DELETE CASCADE
+        );
+        
+        CREATE TABLE IF NOT EXISTS CommunityMember (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER NOT NULL,
+            communityId INTEGER NOT NULL,
+            role TEXT DEFAULT 'member',
+            joinedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (communityId) REFERENCES Community(id) ON DELETE CASCADE,
+            UNIQUE(userId, communityId)
+        );
+    `);
+}
+
+function ensureWarningTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Warning (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER NOT NULL,
+            givenBy INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expiresAt DATETIME NOT NULL,
+            FOREIGN KEY (userId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (givenBy) REFERENCES User(id) ON DELETE CASCADE
+        );
+    `);
+}
+
+function ensureReportTable() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS Report (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporterId INTEGER NOT NULL,
+            targetType TEXT NOT NULL,
+            targetId INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+            resolvedAt DATETIME,
+            resolvedBy INTEGER,
+            FOREIGN KEY (reporterId) REFERENCES User(id) ON DELETE CASCADE,
+            FOREIGN KEY (resolvedBy) REFERENCES User(id) ON DELETE SET NULL
+        );
+    `);
+}
+
+function ensurePostCommunityColumn() {
+    // Voeg communityId kolom toe aan Post tabel als die nog niet bestaat
+    const cols = db.prepare("PRAGMA table_info('Post')").all();
+    const hasCommunityId = cols.some(c => c.name === 'communityId');
+    if (!hasCommunityId) {
+        db.exec("ALTER TABLE Post ADD COLUMN communityId INTEGER REFERENCES Community(id) ON DELETE SET NULL;");
+        console.log('  → Added communityId column to Post table');
+    }
+}
+
+function seedCommunities() {
+    console.log('Seeding communities...');
+
+    // Voorbeeld communities
+    const communities = [
+        { name: 'metal', description: 'Heavy riffs, breakdowns and all things metal.' },
+        { name: 'producing', description: 'Music production tips, tricks and gear talk.' },
+        { name: 'ambient', description: 'Atmospheric and ambient music creators.' },
+        { name: 'songwriters', description: 'Share your lyrics and song ideas.' }
+    ];
+
+    // Owner is amelia (id = 1, bestaat in jouw seeder)
+    const ownerId = 1;
+
+    const insertCommunity = db.prepare('INSERT OR IGNORE INTO Community (name, description, ownerId, updatedAt) VALUES (?, ?, ?, CURRENT_TIMESTAMP)');
+    for (const comm of communities) {
+        insertCommunity.run(comm.name, comm.description, ownerId);
+    }
+
+    // Voeg alle gebruikers als lid toe van alle communities
+    const allCommunities = db.prepare('SELECT id FROM Community').all();
+    const allUsers = db.prepare('SELECT id FROM User').all();
+    const insertMember = db.prepare('INSERT OR IGNORE INTO CommunityMember (userId, communityId, role, joinedAt) VALUES (?, ?, ?, CURRENT_TIMESTAMP)');
+
+    for (const comm of allCommunities) {
+        for (const user of allUsers) {
+            // Eigenaar (ownerId) wordt moderator
+            const role = (user.id === ownerId) ? 'mod' : 'member';
+            insertMember.run(user.id, comm.id, role);
+        }
+    }
+
+    console.log(`  → Seeded ${allCommunities.length} communities with members`);
+}
+
+function seedWarnings() {
+    console.log('Seeding warnings...');
+    // Bereken datum 30 dagen in de toekomst
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 30);
+    const expiresAtStr = futureDate.toISOString().slice(0, 19).replace('T', ' ');
+
+    const insertWarning = db.prepare('INSERT OR IGNORE INTO Warning (userId, givenBy, reason, expiresAt) VALUES (?, ?, ?, ?)');
+
+    // bram (id=2) krijgt een waarschuwing van amelia (id=1)
+    insertWarning.run(2, 1, 'Spamming in comments', expiresAtStr);
+    console.log('  → Added warning for user 2');
+
+    // cora (id=3) krijgt een waarschuwing van amelia
+    insertWarning.run(3, 1, 'Offensive language', expiresAtStr);
+    console.log('  → Added warning for user 3');
+
+    console.log('  → Seeded 2 warnings');
+}
+
+function seedReports() {
+    console.log('Seeding reports...');
+    const insertReport = db.prepare('INSERT OR IGNORE INTO Report (reporterId, targetType, targetId, reason, status) VALUES (?, ?, ?, ?, ?)');
+
+    // Report op post 1 door user 2
+    insertReport.run(2, 'post', 1, 'Inappropriate content', 'pending');
+    // Report op comment 1 door user 3
+    insertReport.run(3, 'comment', 1, 'Harassment', 'pending');
+
+    console.log('  → Seeded 2 reports');
 }
 
 try {
@@ -738,6 +881,13 @@ try {
     seedTags();
     seedNotifications();
     showSample();
+    ensureCommunityTables();
+    ensureWarningTable();
+    ensureReportTable();
+    ensurePostCommunityColumn();
+    seedCommunities();
+    seedWarnings();
+    seedReports();
     console.log('Seeding complete.');
     process.exitCode = 0;
 } catch (err) {

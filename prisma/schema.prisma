@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,26 +8,61 @@ datasource db {
 }
 
 model User {
-  id        Int          @id @default(autoincrement())
-  username  String       @unique
-  email     String       @unique
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
   password  String
-  bio       String       @default("")
-  avatar_url String?     
-  role      String       @default("user")
-  messagesOpen Boolean   @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  posts     Post[]
-  likes     PostLike[]
-  savedPosts SavedPost[]
-  comments  Comment[]
-  following Follow[]     @relation("follower")
-  followers Follow[]     @relation("following")
-  sentMessages Message[] @relation("sender")
-  receivedMessages Message[] @relation("receiver")
-  receivedNotifications Notification[] @relation("user")  // Notificaties ontvangen
-  sentNotifications Notification[] @relation("actor")    // Notificaties gestuurd
+  bio       String   @default("")
+  avatar_url String?
+  role      String   @default("member")   // owner, admin, member
+  banned    Boolean  @default(false)
+  banReason String?
+  bannedUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts            Post[]
+  comments         Comment[]
+  likes            PostLike[]
+  savedPosts       SavedPost[]
+  sentMessages     Message[]    @relation("sender")
+  receivedMessages Message[]    @relation("receiver")
+  following        Follow[]     @relation("follower")
+  followers        Follow[]     @relation("following")
+  receivedNotifications Notification[] @relation("user")
+  sentNotifications   Notification[] @relation("actor")
+  ownedCommunities Community[] @relation("owner")
+  communityMemberships CommunityMember[]
+  givenWarnings    Warning[]    @relation("givenBy")
+  warningsReceived Warning[]    @relation("warnings")
+  reportsMade      Report[]     @relation("reporter")
+  resolvedReports  Report[]     @relation("resolver")  // ← Toegevoegd voor opposite relatie
+}
+
+model Community {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String   @default("")
+  ownerId     Int
+  owner       User     @relation("owner", fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members CommunityMember[]
+  posts   Post[]
+}
+
+model CommunityMember {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  communityId Int
+  role        String   @default("member")   // "member" of "mod"
+  joinedAt    DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+
+  @@unique([userId, communityId])
 }
 
 model Post {
@@ -38,13 +70,37 @@ model Post {
   title       String
   description String
   userId      Int
+  communityId Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
-  likes       PostLike[]
-  savedPosts  SavedPost[]
-  comments    Comment[]
-  tags        PostTag[]  // Voeg deze relatie toe
+
+  user      User      @relation(fields: [userId], references: [id])
+  community Community? @relation(fields: [communityId], references: [id])
+  likes     PostLike[]
+  savedPosts SavedPost[]
+  comments  Comment[]
+  tags      PostTag[]
+  notifications Notification[]
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  posts PostTag[]
+}
+
+model PostTag {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  tagId     Int
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id])
+  tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@unique([postId, tagId])
 }
 
 model PostLike {
@@ -54,7 +110,6 @@ model PostLike {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
-
   @@unique([userId, postId])
 }
 
@@ -65,7 +120,6 @@ model SavedPost {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
-
   @@unique([userId, postId])
 }
 
@@ -78,7 +132,7 @@ model Comment {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
-  notifications Notification[]  // Notificaties voor deze comment
+  notifications Notification[]
 }
 
 model Follow {
@@ -87,69 +141,63 @@ model Follow {
   followingId Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   follower User @relation("follower", fields: [followerId], references: [id])
   following User @relation("following", fields: [followingId], references: [id])
-
   @@unique([followerId, followingId])
-  @@index([followerId])
-  @@index([followingId])
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
-  content   String
-  senderId  Int
+  id         Int      @id @default(autoincrement())
+  content    String
+  senderId   Int
   receiverId Int
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
   sender   User @relation("sender", fields: [senderId], references: [id])
   receiver User @relation("receiver", fields: [receiverId], references: [id])
-
   @@index([senderId])
   @@index([receiverId])
-  @@index([createdAt])
 }
 
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
-  type      String   // 'like', 'comment', 'save', 'follow'
+  type      String
   actorId   Int
   postId    Int?
   commentId Int?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user    User    @relation("user", fields: [userId], references: [id])
-  actor   User    @relation("actor", fields: [actorId], references: [id])
-  post    Post?   @relation(fields: [postId], references: [id])
+  user   User @relation("user", fields: [userId], references: [id])
+  actor  User @relation("actor", fields: [actorId], references: [id])
+  post   Post? @relation(fields: [postId], references: [id])
   comment Comment? @relation(fields: [commentId], references: [id])
-
   @@index([userId])
-  @@index([userId, isRead])
-  @@index([createdAt])
 }
 
-model Tag {
+model Warning {
   id        Int      @id @default(autoincrement())
-  name      String   @unique  // bijv. "metal", "lookingformembers", "music"
+  userId    Int
+  givenBy   Int
+  reason    String
   createdAt DateTime @default(now())
-  
-  posts PostTag[]
+  expiresAt DateTime
+  user      User     @relation("warnings", fields: [userId], references: [id])
+  moderator User     @relation("givenBy", fields: [givenBy], references: [id])
 }
 
-model PostTag {
-  id        Int      @id @default(autoincrement())
-  postId    Int
-  tagId     Int
-  createdAt DateTime @default(now())
-  
-  post Post @relation(fields: [postId], references: [id], onDelete: CASCADE)
-  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: CASCADE)
-  
-  @@unique([postId, tagId])
-}
+model Report {
+  id          Int      @id @default(autoincrement())
+  reporterId  Int
+  targetType  String
+  targetId    Int
+  reason      String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  resolvedBy  Int?
+  reporter    User     @relation("reporter", fields: [reporterId], references: [id])
+  resolver    User?    @relation("resolver", fields: [resolvedBy], references: [id])
+} 
